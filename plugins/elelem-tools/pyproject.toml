@@ -1,0 +1,21 @@
+[project]
+name = "elelem-tools"
+dynamic = ["version"]
+dependencies = [
+    "elelem",
+]
+
+[project.entry-points.elelem]
+tools = "elelem_tools"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "regex"
+path = "../../pyproject.toml"
+pattern = 'version = "(?P<version>[^"]+)'
+
+[tool.uv.sources]
+elelem = { workspace = true }
