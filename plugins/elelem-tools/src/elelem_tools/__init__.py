@@ -3,6 +3,7 @@
 
 from collections.abc import Callable
 
+from langchain_community.tools.file_management.read import ReadFileTool
 from langchain_core.tools import BaseTool
 
 import elelem
@@ -10,4 +11,4 @@ import elelem
 
 @elelem.hookimpl
 def register_tools(register: Callable[[BaseTool], None]):
-    register("XXX")  # XXX
+    register(ReadFileTool())

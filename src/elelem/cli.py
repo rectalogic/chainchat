@@ -9,16 +9,22 @@ from . import chat, plugins
 
 
 class LazyProviderGroup(click.Group):
+    lazy_commands: list[str]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.lazy_commands = sorted(plugins.load_providers().keys())
+
     def list_commands(self, ctx: click.Context):
-        base = super().list_commands(ctx)
-        providers = plugins.load_providers()
-        return base + sorted(providers.keys())
+        return super().list_commands(ctx) + self.lazy_commands
 
     def get_command(self, ctx: click.Context, cmd_name: str):
-        command = plugins.load_providers()[cmd_name]
-        command.add_command(prompt_)
-        command.add_command(chat_)
-        return command
+        if cmd_name in self.lazy_commands:
+            command = plugins.load_providers()[cmd_name]
+            command.add_command(prompt_)
+            command.add_command(chat_)
+            return command
+        return super().get_command(ctx, cmd_name)
 
 
 @click.group(cls=LazyProviderGroup)
@@ -37,7 +43,8 @@ def cli(dotenv: str | None):
 @click.argument("prompt", required=True)
 @click.pass_obj
 def prompt_(provider: BaseChatModel, prompt: str):
-    for m in chat.Chat(provider).stream(prompt):
+    # XXX add option to specify tools to use
+    for m in chat.Chat(provider, tools=plugins.load_tools().values()).stream(prompt):
         print(m, end="|")
 
 
@@ -46,3 +53,10 @@ def prompt_(provider: BaseChatModel, prompt: str):
 @click.pass_obj
 def chat_(provider: BaseChatModel, max_history_tokens: int | None):
     pass
+
+
+@cli.command(help="List available tools for tool-calling LLMs.")
+def list_tools():
+    tools = plugins.load_tools()
+    for tool in sorted(tools.keys()):
+        click.echo(tool)
