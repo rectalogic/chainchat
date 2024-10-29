@@ -3,20 +3,36 @@
 
 from collections.abc import Callable
 from functools import update_wrapper
+from typing import overload
 
 import click
 from langchain_core.language_models.chat_models import BaseChatModel
 
 
-def provider_command(constructor: Callable[..., BaseChatModel]):
-    group = click.group()(constructor)
+@overload
+def provider_command(name: Callable[..., BaseChatModel]) -> click.Group: ...
 
+
+@overload
+def provider_command(name: str) -> Callable[[Callable[..., BaseChatModel]], click.Group]: ...
+
+
+def provider_command(name: str | Callable[..., BaseChatModel]):
     @click.pass_context
     def command(ctx, *args, **kwargs):
-        ctx.obj = ctx.invoke(constructor, *args, **kwargs)
+        ctx.obj = ctx.invoke(original, *args, **kwargs)
         if not isinstance(ctx.obj, BaseChatModel):
             raise TypeError("Provider command must return a langchain BaseChatModel")
         return ctx.obj
 
-    group.callback = update_wrapper(command, group.callback)
-    return group
+    if callable(name):
+        original = name
+        return click.group()(update_wrapper(command, name))
+    else:
+
+        def wrap(f):
+            nonlocal original
+            original = f
+            return click.group(name)(update_wrapper(command, f))
+
+        return wrap

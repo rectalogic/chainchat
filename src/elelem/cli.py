@@ -4,6 +4,7 @@
 import click
 from dotenv import load_dotenv
 from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.tools import BaseTool
 
 from . import chat, plugins
 
@@ -30,6 +31,7 @@ class LazyProviderGroup(click.Group):
 @click.group(cls=LazyProviderGroup)
 @click.option(
     "--dotenv",
+    "-e",
     type=click.Path(exists=True, dir_okay=False),
     default=".env",
     help="Load environment variables from a .env file.",
@@ -39,19 +41,42 @@ def cli(dotenv: str | None):
     load_dotenv(dotenv)
 
 
+class ToolChoices:
+    def __iter__(self):
+        yield from plugins.load_tools().keys()
+
+
+tool = click.option(
+    "--tool", "-t", help="Enable specified tools.", type=click.Choice(ToolChoices()), multiple=True
+)
+
+
+def process_tools(tool: tuple[str] | None) -> list[BaseTool] | None:
+    if not tool:
+        return None
+    tools: list[BaseTool] = []
+    valid_tools = plugins.load_tools()
+    for tool_name in tool:
+        if tool_name not in valid_tools:
+            raise click.UsageError(f"Tool {tool_name} not found. Use `list-tools`.")
+        tools.append(valid_tools[tool_name])
+    return tools
+
+
 @click.command("prompt")
+@tool
 @click.argument("prompt", required=True)
 @click.pass_obj
-def prompt_(provider: BaseChatModel, prompt: str):
-    # XXX add option to specify tools to use
-    for m in chat.Chat(provider, tools=plugins.load_tools().values()).stream(prompt):
+def prompt_(provider: BaseChatModel, prompt: str, tool: tuple[str]):
+    for m in chat.Chat(provider, tools=process_tools(tool)).stream(prompt):
         print(m, end="|")
 
 
 @click.command("chat")
-@click.option("--max-history-tokens", type=click.INT, help="Max chat history tokens to keep.")
+@tool
+@click.option("--max-history-tokens", type=int, help="Max chat history tokens to keep.")
 @click.pass_obj
-def chat_(provider: BaseChatModel, max_history_tokens: int | None):
+def chat_(provider: BaseChatModel, tool: tuple[str], max_history_tokens: int | None):
     pass
 
 

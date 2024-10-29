@@ -57,6 +57,7 @@ class Chat:
             graph.add_node("tools", tool_node)
             graph.add_edge("tools", "agent")
 
+        # XXX make checkpointer configurable (memory or sqlite), make thread_id configurable
         self.graph = graph.compile(checkpointer=MemorySaver()).with_config(
             {"configurable": {"thread_id": "1"}}
         )
@@ -69,11 +70,11 @@ class Chat:
             return "tools"
         return END
 
-    def invoke(self, messages):
+    def invoke(self, messages: Sequence[MessageLikeRepresentation]):
         return self.graph.invoke({"messages": messages})
 
-    def stream(self, messages):
-        for chunk, metadata in self.graph.stream(
+    def stream(self, messages: Sequence[MessageLikeRepresentation]):
+        for chunk, _ in self.graph.stream(
             {"messages": messages},
             # https://langchain-ai.github.io/langgraph/cloud/how-tos/stream_messages
             stream_mode="messages",

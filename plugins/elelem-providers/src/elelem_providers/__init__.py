@@ -7,10 +7,11 @@ import click
 
 import elelem
 
-from . import groq, openai
+from . import google, groq, openai
 
 
 @elelem.hookimpl
 def register_providers(register: Callable[[click.Group], None]):
-    register(groq.groq)
-    register(openai.openai)
+    register(groq.command)
+    register(openai.command)
+    register(google.command)

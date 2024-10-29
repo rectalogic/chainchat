@@ -9,12 +9,12 @@ from langchain_groq import ChatGroq
 import elelem
 
 
-@elelem.provider_command
+@elelem.provider_command("groq")
 @click.option(
     "--model", default="llama-3.2-90b-vision-preview", show_default=True, help="The Groq model to use."
 )
-@click.option("--temperature", type=click.FLOAT, help="Sampling temperature.")
-def groq(model: str, temperature: float | None) -> ChatGroq:
+@click.option("--temperature", type=float, help="Sampling temperature.")
+def command(model: str, temperature: float | None) -> ChatGroq:
     kwargs: dict[str, Any] = {}
     if temperature is not None:
         kwargs["temperature"] = temperature
