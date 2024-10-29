@@ -3,9 +3,11 @@
 
 from collections.abc import Callable
 
+from langchain_core.tools import BaseTool
+
 import elelem
 
 
 @elelem.hookimpl
-def register_tools(register: Callable[[elelem.BaseTool], None]):
+def register_tools(register: Callable[[BaseTool], None]):
     register("XXX")  # XXX

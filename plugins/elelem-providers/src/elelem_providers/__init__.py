@@ -3,9 +3,14 @@
 
 from collections.abc import Callable
 
+import click
+
 import elelem
+
+from . import groq, openai
 
 
 @elelem.hookimpl
-def register_providers(register: Callable[[elelem.Provider], None]):
-    register(elelem.Provider())  # XXX
+def register_providers(register: Callable[[click.Group], None]):
+    register(groq.groq)
+    register(openai.openai)

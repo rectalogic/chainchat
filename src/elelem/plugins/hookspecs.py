@@ -5,10 +5,11 @@ from __future__ import annotations
 import typing
 from collections.abc import Callable
 
+import click
 from pluggy import HookimplMarker, HookspecMarker
 
 if typing.TYPE_CHECKING:
-    from . import BaseTool, Provider
+    from langchain_core.tools import BaseTool
 
 
 hookspec = HookspecMarker("elelem")
@@ -16,10 +17,10 @@ hookimpl = HookimplMarker("elelem")
 
 
 @hookspec
-def register_tools(register: Callable[[Provider], None]):
-    """Register LLM tools"""
+def register_providers(register: Callable[[click.Group], None]):
+    """Register LLM model providers click groups"""
 
 
 @hookspec
-def register_providers(register: Callable[[BaseTool], None]):
-    """Register LLM model providers"""
+def register_tools(register: Callable[[BaseTool], None]):
+    """Register LLM tools"""

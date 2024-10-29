@@ -3,14 +3,13 @@
 
 from __future__ import annotations
 
-import typing
 from functools import cache
 
+import click
 import pluggy
 from langchain_core.tools import BaseTool
 
 from . import hookspecs
-from .provider import Provider
 
 
 @cache
@@ -22,11 +21,11 @@ def plugin_manager() -> pluggy.PluginManager:
 
 
 @cache
-def load_providers() -> list[Provider]:
-    providers = []
+def load_providers() -> dict[str, click.Group]:
+    providers: dict[str, click.Group] = {}
 
-    def register(provider: Provider):
-        providers.append(provider)
+    def register(provider: click.Group):
+        providers[provider.name] = provider
 
     plugin_manager().hook.register_providers(register=register)
 
@@ -34,11 +33,11 @@ def load_providers() -> list[Provider]:
 
 
 @cache
-def load_tools() -> list[BaseTool]:
-    tools = []
+def load_tools() -> dict[str, BaseTool]:
+    tools: dict[str, BaseTool] = {}
 
     def register(tool: BaseTool):
-        tools.append(tool)
+        tools[tool.name] = tool
 
     plugin_manager().hook.register_tools(register=register)
 

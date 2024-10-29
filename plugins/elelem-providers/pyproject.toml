@@ -3,6 +3,8 @@ name = "elelem-providers"
 dynamic = ["version"]
 dependencies = [
     "elelem",
+    "langchain-groq>=0.2.0",
+    "langchain-openai>=0.2.4",
 ]
 
 [project.entry-points.elelem]
