@@ -3,7 +3,9 @@
 
 from collections.abc import Callable
 
-from langchain_community.tools.file_management.read import ReadFileTool
+from langchain_community.agent_toolkits.file_management.toolkit import FileManagementToolkit
+from langchain_community.agent_toolkits.openapi.toolkit import RequestsToolkit
+from langchain_community.tools.brave_search.tool import BraveSearch
 from langchain_core.tools import BaseTool
 
 import elelem
@@ -11,4 +13,8 @@ import elelem
 
 @elelem.hookimpl
 def register_tools(register: Callable[[BaseTool], None]):
-    register(ReadFileTool())
+    for tool in FileManagementToolkit().get_tools():
+        register(tool)
+    for tool in RequestsToolkit().get_tools():
+        register(tool)
+    register(BraveSearch())

@@ -84,4 +84,4 @@ def chat_(provider: BaseChatModel, tool: tuple[str], max_history_tokens: int | N
 def list_tools():
     tools = plugins.load_tools()
     for tool in sorted(tools.keys()):
-        click.echo(tool)
+        click.echo(f"{tool}: {tools[tool].description}")

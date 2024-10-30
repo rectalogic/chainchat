@@ -2,18 +2,36 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, Sequence, TypedDict
+import json
+from typing import TYPE_CHECKING, Annotated, Any, Sequence, TypedDict
 
+import click
+from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, trim_messages
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, MessagesState, StateGraph
-from langgraph.prebuilt import ToolNode
+from langgraph.prebuilt import ToolNode, tools_condition
 
 if TYPE_CHECKING:
     from langchain_core.prompts.chat import MessageLikeRepresentation
     from langchain_core.tools import BaseTool
+
+
+class ToolLoggingHandler(BaseCallbackHandler):
+    def on_tool_start(
+        self,
+        serialized: dict[str, Any],
+        input_str: str,
+        **kwargs: Any,
+    ) -> None:
+        click.secho(
+            f"Tool: {serialized["name"]} {input_str}",
+            err=True,
+            italic=True,
+            dim=True,
+        )
 
 
 class Chat:
@@ -53,22 +71,18 @@ class Chat:
         graph.add_edge(START, "agent")
         graph.add_node("agent", self._run_chain)
         if tool_node:
-            graph.add_conditional_edges("agent", self._should_call_tools, ["tools", END])
+            graph.add_conditional_edges("agent", tools_condition)
             graph.add_node("tools", tool_node)
             graph.add_edge("tools", "agent")
 
         # XXX make checkpointer configurable (memory or sqlite), make thread_id configurable
         self.graph = graph.compile(checkpointer=MemorySaver()).with_config(
-            {"configurable": {"thread_id": "1"}}
+            {"configurable": {"thread_id": "1"}},
+            callbacks=[ToolLoggingHandler()],
         )
 
     def _run_chain(self, state: MessagesState):
         return {"messages": [self.chain.invoke(state)]}
-
-    def _should_call_tools(self, state: MessagesState):
-        if state["messages"][-1].tool_calls:
-            return "tools"
-        return END
 
     def invoke(self, messages: Sequence[MessageLikeRepresentation]):
         return self.graph.invoke({"messages": messages})
