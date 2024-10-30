@@ -11,7 +11,11 @@ import elelem
 
 @elelem.provider_command("groq")
 @click.option(
-    "--model", default="llama-3.2-90b-vision-preview", show_default=True, help="The Groq model to use."
+    "--model",
+    "-m",
+    default="llama-3.2-90b-vision-preview",
+    show_default=True,
+    help="The Groq model to use.",
 )
 @click.option("--temperature", type=float, help="Sampling temperature.")
 def command(model: str, temperature: float | None) -> ChatGroq:

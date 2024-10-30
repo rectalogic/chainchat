@@ -11,7 +11,11 @@ import elelem
 
 @elelem.provider_command("google")
 @click.option(
-    "--model", default="gemini-1.5-flash-latest", show_default=True, help="The Google Gemini model to use."
+    "--model",
+    "-m",
+    default="gemini-1.5-flash-latest",
+    show_default=True,
+    help="The Google Gemini model to use.",
 )
 @click.option("--temperature", type=float, help="Sampling temperature.")
 def command(model: str, temperature: float | None) -> ChatGoogleGenerativeAI:

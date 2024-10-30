@@ -11,7 +11,7 @@ import elelem
 
 
 @elelem.provider_command("openai")
-@click.option("--model", default="gpt-4o-mini", show_default=True, help="The OpenAI model to use.")
+@click.option("--model", "-m", default="gpt-4o-mini", show_default=True, help="The OpenAI model to use.")
 @click.option("--temperature", type=float, help="Sampling temperature.")
 @click.option(
     "--base-url", help="Base URL for API requests. Only specify if using a proxy or service emulator."

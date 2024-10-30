@@ -7,6 +7,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.tools import BaseTool
 
 from . import chat, plugins
+from .attachment import ATTACHMENT, Attachment, build_message_with_attachments
 
 
 class LazyProviderGroup(click.Group):
@@ -49,6 +50,9 @@ class ToolChoices:
 tool = click.option(
     "--tool", "-t", help="Enable specified tools.", type=click.Choice(ToolChoices()), multiple=True
 )
+attachment = click.option(
+    "--attachment", "-a", type=ATTACHMENT, help="Send attachment with prompt.", multiple=True
+)
 
 
 def process_tools(tool: tuple[str] | None) -> list[BaseTool] | None:
@@ -65,18 +69,29 @@ def process_tools(tool: tuple[str] | None) -> list[BaseTool] | None:
 
 @click.command("prompt")
 @tool
+@attachment
 @click.argument("prompt", required=True)
 @click.pass_obj
-def prompt_(provider: BaseChatModel, prompt: str, tool: tuple[str]):
-    for m in chat.Chat(provider, tools=process_tools(tool)).stream(prompt):
+def prompt_(
+    provider: BaseChatModel, prompt: str, tool: tuple[str] | None, attachment: tuple[Attachment] | None
+):
+    for m in chat.Chat(provider, tools=process_tools(tool)).stream(
+        build_message_with_attachments(prompt, attachment)
+    ):
         print(m, end="|")
 
 
 @click.command("chat")
 @tool
+@attachment
 @click.option("--max-history-tokens", type=int, help="Max chat history tokens to keep.")
 @click.pass_obj
-def chat_(provider: BaseChatModel, tool: tuple[str], max_history_tokens: int | None):
+def chat_(
+    provider: BaseChatModel,
+    tool: tuple[str] | None,
+    attachment: tuple[Attachment] | None,
+    max_history_tokens: int | None,
+):
     pass
 
 
