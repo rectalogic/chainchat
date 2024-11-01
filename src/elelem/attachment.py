@@ -24,13 +24,20 @@ def data_url(data: bytes, mimetype: str) -> str:
 
 class Attachment:
     def __init__(self, url: str, mimetype: str | None = None):
-        """`url` is any url or path. If a url is prefixed with `local:` it will be downloaded."""
+        """
+        `url` is any url or path. If a url or path is prefixed with `data:` it will be loaded and
+        base64 encoded, otherwise it will be used as-is.
+        """
+        if url.startswith("data:"):
+            url = url[5:]
+            encode_data = True
+        else:
+            encode_data = False
         if not mimetype:
             mimetype, _ = mimetypes.guess_type(url, strict=False)
         self.mimetype = mimetype
         if "://" in url:
-            if url.startswith("local:"):
-                url = url[6:]
+            if encode_data:
                 if not self.mimetype:
                     response = httpx.head(url)
                     response.raise_for_status()
@@ -43,8 +50,11 @@ class Attachment:
         else:
             if not self.mimetype:
                 self.mimetype = "application/octet-stream"
-            with open(url, "rb") as f:
-                self.url = data_url(f.read(), self.mimetype)
+            if encode_data:
+                with open(url, "rb") as f:
+                    self.url = data_url(f.read(), self.mimetype)
+            else:
+                self.url = url
 
     def to_message_content(self) -> dict:
         # openai supports images, and audio using a different format

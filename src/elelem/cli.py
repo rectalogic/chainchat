@@ -1,6 +1,8 @@
 # Copyright (C) 2024 Andrew Wason
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+from collections.abc import Callable, Iterator
+
 import click
 from dotenv import load_dotenv
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -8,6 +10,7 @@ from langchain_core.tools import BaseTool
 
 from . import chat, plugins
 from .attachment import ATTACHMENT, Attachment, build_message_with_attachments
+from .render import render_markdown, render_text
 
 
 class LazyProviderGroup(click.Group):
@@ -35,7 +38,7 @@ class LazyProviderGroup(click.Group):
     "-e",
     type=click.Path(exists=True, dir_okay=False),
     default=".env",
-    help="Load environment variables from a .env file.",
+    help="Load environment variables (API keys) from a .env file.",
 )
 @click.version_option()
 def cli(dotenv: str | None):
@@ -53,6 +56,7 @@ tool = click.option(
 attachment = click.option(
     "--attachment", "-a", type=ATTACHMENT, help="Send attachment with prompt.", multiple=True
 )
+markdown = click.option("--markdown/--no-markdown", help="Render LLM responses as Markdown.", default=True)
 
 
 def process_tools(tool: tuple[str] | None) -> list[BaseTool] | None:
@@ -67,32 +71,45 @@ def process_tools(tool: tuple[str] | None) -> list[BaseTool] | None:
     return tools
 
 
+def process_renderer(markdown: bool) -> Callable[[Iterator[str]], None]:
+    return render_markdown if markdown else render_text
+
+
 @click.command("prompt")
 @tool
 @attachment
+@markdown
 @click.argument("prompt", required=True)
 @click.pass_obj
 def prompt_(
-    provider: BaseChatModel, prompt: str, tool: tuple[str] | None, attachment: tuple[Attachment] | None
+    provider: BaseChatModel,
+    prompt: str,
+    tool: tuple[str] | None,
+    attachment: tuple[Attachment] | None,
+    markdown: bool,
 ):
-    for m in chat.Chat(provider, tools=process_tools(tool)).stream(
-        build_message_with_attachments(prompt, attachment)
-    ):
-        print(m, end="|")
+    process_renderer(markdown)(
+        chat.Chat(provider, tools=process_tools(tool)).stream(
+            build_message_with_attachments(prompt, attachment)
+        )
+    )
 
 
 @click.command("chat")
 @tool
 @attachment
+@markdown
 @click.option("--max-history-tokens", type=int, help="Max chat history tokens to keep.")
 @click.pass_obj
 def chat_(
     provider: BaseChatModel,
     tool: tuple[str] | None,
     attachment: tuple[Attachment] | None,
+    markdown: bool,
     max_history_tokens: int | None,
 ):
-    pass
+    chatbot = chat.Chat(provider, tools=process_tools(tool), max_history_tokens=max_history_tokens)
+    # XXX pass attachments with first prompt
 
 
 @cli.command(help="List available tools for tool-calling LLMs.")

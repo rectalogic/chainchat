@@ -3,6 +3,8 @@ name = "elelem-providers"
 dynamic = ["version"]
 dependencies = [
     "elelem",
+    "langchain-anthropic>=0.2.3",
+    "langchain-cerebras>=0.3.0",
     "langchain-google-genai>=2.0.3",
     "langchain-groq>=0.2.0",
     "langchain-openai>=0.2.4",

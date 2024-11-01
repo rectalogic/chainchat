@@ -17,9 +17,18 @@ import elelem
     show_default=True,
     help="The Google Gemini model to use.",
 )
-@click.option("--temperature", type=float, help="Sampling temperature.")
-def command(model: str, temperature: float | None) -> ChatGoogleGenerativeAI:
-    kwargs: dict[str, Any] = {}
-    if temperature is not None:
-        kwargs["temperature"] = temperature
-    return ChatGoogleGenerativeAI(model=model, **kwargs)
+@click.option("--temperature", type=click.FloatRange(0.0, 1.0), help="Sampling temperature.")
+@click.option("--max-output-tokens", type=int, help="Max number of tokens to generate.")
+@click.option(
+    "--top-p",
+    type=click.FloatRange(0.0, 1.0),
+    help="Decode using nucleus sampling: "
+    "consider the smallest set of tokens whose probability sum is at least top_p.",
+)
+@click.option(
+    "--top-k", type=int, help="Decode using top-k sampling: consider the set of top_k most probable tokens."
+)
+def command(model: str, **kwargs: dict[str, Any]) -> ChatGoogleGenerativeAI:
+    """Google LLM provider https://ai.google.dev/"""
+    elelem.validate_api_key("GOOGLE_API_KEY")
+    return ChatGoogleGenerativeAI(model=model, **elelem.filter_kwargs(kwargs))

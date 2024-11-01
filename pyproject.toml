@@ -16,6 +16,7 @@ dependencies = [
     "langgraph>=0.2.39",
     "python-dotenv>=1.0.1",
     "httpx>=0.27.2",
+    "rich>=13.9.3",
 ]
 classifiers = [
     "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
