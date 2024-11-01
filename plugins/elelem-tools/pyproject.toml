@@ -3,7 +3,8 @@ name = "elelem-tools"
 dynamic = ["version"]
 dependencies = [
     "elelem",
-    "langchain-community>=0.3.3",
+    "click~=8.1.7",
+    "langchain-community~=0.3.3",
 ]
 
 [project.entry-points.elelem]

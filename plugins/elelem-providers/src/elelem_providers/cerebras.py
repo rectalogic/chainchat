@@ -24,3 +24,13 @@ def command(model: str, **kwargs: dict[str, Any]) -> ChatCerebras:
     """Cerebras LLM provider https://cerebras.ai/"""
     elelem.validate_api_key("CEREBRAS_API_KEY")
     return ChatCerebras(model=model, **elelem.filter_kwargs(kwargs))
+
+
+@command.command("list-models")
+def list_models() -> None:
+    """List Cerebras models."""
+    for model in [
+        "llama3.1-70b",
+        "llama3.1-8b",
+    ]:
+        click.echo(model)

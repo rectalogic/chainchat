@@ -32,3 +32,16 @@ def command(model: str, **kwargs: dict[str, Any]) -> ChatGoogleGenerativeAI:
     """Google LLM provider https://ai.google.dev/"""
     elelem.validate_api_key("GOOGLE_API_KEY")
     return ChatGoogleGenerativeAI(model=model, **elelem.filter_kwargs(kwargs))
+
+
+@command.command("list-models")
+def list_models() -> None:
+    """List Google models."""
+    # https://ai.google.dev/gemini-api/docs/models/gemini
+    for model in [
+        "gemini-1.5-flash",
+        "gemini-1.5-flash-8b",
+        "gemini-1.5-pro",
+    ]:
+        click.echo(model)
+        click.echo(f"{model}-latest")

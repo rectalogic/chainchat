@@ -8,19 +8,26 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "elelem-providers",
-    "elelem-tools",
     "click~=8.1.7",
     "langchain-core~=0.3.13",
     "pluggy~=1.5.0",
-    "langgraph>=0.2.39",
-    "python-dotenv>=1.0.1",
-    "httpx>=0.27.2",
-    "rich>=13.9.3",
+    "langgraph~=0.2.39",
+    "python-dotenv~=1.0.1",
+    "httpx~=0.27.2",
+    "rich~=13.9.3",
 ]
 classifiers = [
     "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
 ]
+
+[project.optional-dependencies]
+all = ["elelem-tools", "elelem-providers[all]"]
+tools = ["elelem-tools"]
+openai = ["elelem-providers[openai]"]
+anthropic = ["elelem-providers[anthropic]"]
+google = ["elelem-providers[google]"]
+groq = ["elelem-providers[groq]"]
+cerebras = ["elelem-providers[cerebras]"]
 
 [project.scripts]
 elelem = "elelem.cli:cli"

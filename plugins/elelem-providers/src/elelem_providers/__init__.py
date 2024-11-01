@@ -7,13 +7,36 @@ import click
 
 import elelem
 
-from . import anthropic, cerebras, google, groq, openai
-
 
 @elelem.hookimpl
 def register_providers(register: Callable[[click.Group], None]):
-    register(groq.command)
-    register(openai.command)
-    register(google.command)
-    register(cerebras.command)
-    register(anthropic.command)
+    try:
+        from . import groq
+
+        register(groq.command)
+    except ImportError:
+        pass
+    try:
+        from . import openai
+
+        register(openai.command)
+    except ImportError:
+        pass
+    try:
+        from . import google
+
+        register(google.command)
+    except ImportError:
+        pass
+    try:
+        from . import cerebras
+
+        register(cerebras.command)
+    except ImportError:
+        pass
+    try:
+        from . import anthropic
+
+        register(anthropic.command)
+    except ImportError:
+        pass

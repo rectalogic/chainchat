@@ -3,12 +3,16 @@ name = "elelem-providers"
 dynamic = ["version"]
 dependencies = [
     "elelem",
-    "langchain-anthropic>=0.2.3",
-    "langchain-cerebras>=0.3.0",
-    "langchain-google-genai>=2.0.3",
-    "langchain-groq>=0.2.0",
-    "langchain-openai>=0.2.4",
+    "click~=8.1.7",
 ]
+
+[project.optional-dependencies]
+all = ["elelem-providers[openai,anthropic,google,groq,cerebras]"]
+openai = ["langchain-openai~=0.2.4"]
+anthropic = [ "langchain-anthropic~=0.2.3"]
+google = ["langchain-google-genai~=2.0.3"]
+groq = ["langchain-groq~=0.2.0"]
+cerebras = ["langchain-cerebras~=0.3.0"]
 
 [project.entry-points.elelem]
 providers = "elelem_providers"

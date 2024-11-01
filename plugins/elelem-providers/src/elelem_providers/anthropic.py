@@ -29,3 +29,17 @@ def command(model: str, **kwargs: dict[str, Any]) -> ChatAnthropic:
     """Anthropic LLM provider https://www.anthropic.com/"""
     elelem.validate_api_key("ANTHROPIC_API_KEY")
     return ChatAnthropic(model=model, **elelem.filter_kwargs(kwargs))
+
+
+@command.command("list-models")
+def list_models() -> None:
+    """List Anthropic models."""
+    # https://docs.anthropic.com/en/docs/resources/model-deprecations
+    for model in [
+        "claude-3-5-sonnet-20241022",
+        "claude-3-haiku-20240307",
+        "claude-3-sonnet-20240229",
+        "claude-3-opus-20240229",
+        "claude-3-5-sonnet-20240620",
+    ]:
+        click.echo(model)

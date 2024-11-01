@@ -30,3 +30,19 @@ def command(model: str, api_key_env: str, **kwargs: dict[str, Any]) -> ChatOpenA
     """OpenAI LLM provider https://openai.com/"""
     kwargs["api_key"] = elelem.validate_api_key(api_key_env)
     return ChatOpenAI(model=model, **elelem.filter_kwargs(kwargs))
+
+
+@command.command("list-models")
+def list_models() -> None:
+    """List OpenAI models."""
+    # https://platform.openai.com/docs/models
+    for model in [
+        "gpt-4o",
+        "gpt-4o-mini",
+        "gpt-4-turbo",
+        "gpt-4",
+        "gpt-3.5-turbo",
+        "o1-preview",
+        "o1-mini",
+    ]:
+        click.echo(model)
