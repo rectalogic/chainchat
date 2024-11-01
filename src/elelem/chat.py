@@ -2,17 +2,20 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 from __future__ import annotations
 
-import json
-from typing import TYPE_CHECKING, Annotated, Any, Sequence, TypedDict
+import readline  # for input()  # noqa: F401
+from collections.abc import Callable, Iterator, Sequence
+from typing import TYPE_CHECKING, Any
 
 import click
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessage, HumanMessage, trim_messages
+from langchain_core.messages import AIMessage, trim_messages
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langgraph.checkpoint.memory import MemorySaver
-from langgraph.graph import END, START, MessagesState, StateGraph
+from langgraph.graph import START, MessagesState, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
+
+from .attachment import Attachment, build_message_with_attachments
 
 if TYPE_CHECKING:
     from langchain_core.prompts.chat import MessageLikeRepresentation
@@ -85,7 +88,7 @@ class Chat:
         return {"messages": [self.chain.invoke(state)]}
 
     def invoke(self, messages: Sequence[MessageLikeRepresentation]):
-        return self.graph.invoke({"messages": messages})
+        yield self.graph.invoke({"messages": messages})
 
     def stream(self, messages: Sequence[MessageLikeRepresentation]):
         for chunk, _ in self.graph.stream(
@@ -95,3 +98,27 @@ class Chat:
         ):
             if isinstance(chunk, AIMessage) and chunk.content:  # Filter to just model responses
                 yield chunk.content
+
+    def prompt(
+        self,
+        prompt: str,
+        renderer: Callable[[Iterator[str]], None],
+        attachments: tuple[Attachment] | None = None,
+    ):
+        renderer(self.stream(build_message_with_attachments(prompt, attachments)))
+
+    def chat(self, renderer: Callable[[Iterator[str]], None], attachments: tuple[Attachment] | None = None):
+        click.echo("Chat - Ctrl-D to exit")
+        click.echo("Enter >>> for multiline mode, then <<< to finish")
+        try:
+            while True:
+                prompt = input("> ")
+                if prompt == ">>>":
+                    prompt = ""
+                    while prompt != "<<<":
+                        prompt += input(". ") + "\n"
+
+                self.prompt(prompt, renderer, attachments)
+                attachments = None
+        except EOFError:
+            return

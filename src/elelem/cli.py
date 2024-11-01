@@ -88,11 +88,7 @@ def prompt_(
     attachment: tuple[Attachment] | None,
     markdown: bool,
 ):
-    process_renderer(markdown)(
-        chat.Chat(provider, tools=process_tools(tool)).stream(
-            build_message_with_attachments(prompt, attachment)
-        )
-    )
+    chat.Chat(provider, tools=process_tools(tool)).prompt(prompt, process_renderer(markdown), attachment)
 
 
 @click.command("chat")
@@ -108,8 +104,9 @@ def chat_(
     markdown: bool,
     max_history_tokens: int | None,
 ):
-    chatbot = chat.Chat(provider, tools=process_tools(tool), max_history_tokens=max_history_tokens)
-    # XXX pass attachments with first prompt
+    chat.Chat(provider, tools=process_tools(tool), max_history_tokens=max_history_tokens).chat(
+        process_renderer(markdown), attachment
+    )
 
 
 @cli.command(help="List available tools for tool-calling LLMs.")
