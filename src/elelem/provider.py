@@ -3,11 +3,24 @@
 
 import inspect
 import os
+import re
 from importlib import import_module, metadata
 
 import click
 import pydanclick
 from langchain_core.language_models.chat_models import BaseChatModel
+
+# https://stackoverflow.com/a/1176023/1480205
+OPTION_NAME_RE = re.compile(
+    r"""
+        (?<=[a-z])      # preceded by lowercase
+        (?=[A-Z])       # followed by uppercase
+        |               #   OR
+        (?<=[A-Z])       # preceded by lowercase
+        (?=[A-Z][a-z])  # followed by uppercase, then lowercase
+    """,
+    re.X,
+)
 
 
 def build_provider_commands(cli: click.Group, *subcommands: click.Command):
@@ -19,8 +32,9 @@ def build_provider_commands(cli: click.Group, *subcommands: click.Command):
         for _, cls in inspect.getmembers(module):
             if not (inspect.isclass(cls) and issubclass(cls, BaseChatModel)):
                 continue
-            name = cls.__name__.split(".")[-1].replace("Chat", "").lower()
+            name = OPTION_NAME_RE.sub("-", cls.__name__.split(".")[-1].replace("Chat", "")).lower()
 
+            # XXX add command level help from docstring, or link to docs
             @cli.group(name)
             @pydanclick.from_pydantic(
                 "model",
