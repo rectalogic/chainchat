@@ -22,7 +22,6 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-tools = ["chainchat-tools"]
 #XXX add langchain model providers here
 
 [project.scripts]
@@ -38,12 +37,6 @@ dev = [
     "pytest~=8.3.3",
     "ruff~=0.7.1",
 ]
-
-[tool.uv.sources]
-chainchat-tools = { workspace = true }
-
-[tool.uv.workspace]
-members = ["plugins/*"]
 
 [tool.ruff]
 target-version = "py312"

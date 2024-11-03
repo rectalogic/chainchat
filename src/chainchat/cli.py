@@ -1,7 +1,6 @@
 # Copyright (C) 2024 Andrew Wason
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-import inspect
 from collections.abc import Callable, Iterator
 
 import click
@@ -9,8 +8,8 @@ from dotenv import load_dotenv
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.tools import BaseTool
 
-from . import chat, plugins
-from .attachment import ATTACHMENT, Attachment, build_message_with_attachments
+from . import chat, tool
+from .attachment import ATTACHMENT, Attachment
 from .provider import build_provider_commands
 from .render import render_markdown, render_text
 
@@ -30,7 +29,7 @@ def cli(dotenv: str | None):
 
 class ToolChoices:
     def __iter__(self):
-        yield from plugins.load_tools().keys()
+        yield from tool.load_tools().keys()
 
 
 system_option = click.option("--system-message", "-s", help="System message.")
@@ -45,15 +44,15 @@ markdown_option = click.option(
 )
 
 
-def process_tools(tool: tuple[str] | None) -> list[BaseTool] | None:
-    if not tool:
+def process_tools(tool_names: tuple[str] | None) -> list[BaseTool] | None:
+    if not tool_names:
         return None
     tools: list[BaseTool] = []
-    valid_tools = plugins.load_tools()
-    for tool_name in tool:
+    valid_tools = tool.load_tools()
+    for tool_name in tool_names:
         if tool_name not in valid_tools:
             raise click.UsageError(f"Tool {tool_name} not found. Use `list-tools`.")
-        tools.append(valid_tools[tool_name])
+        tools.append(valid_tools[tool_name]())
     return tools
 
 
@@ -108,7 +107,11 @@ build_provider_commands(cli, prompt_, chat_)
 
 
 @cli.command(help="List available tools for tool-calling LLMs.")
-def list_tools():
-    tools = plugins.load_tools()
-    for tool in sorted(tools.keys()):
-        click.echo(f"{tool}: {tools[tool].description}")
+@click.option("--descriptions/--no-descriptions", default=False, help="Show tool descriptions.")
+def list_tools(descriptions: bool):
+    tools = tool.load_tools()
+    for tool_name in sorted(tools.keys()):
+        if descriptions:
+            click.echo(f"{tool_name}: {tools[tool_name].model_fields["description"].default}")
+        else:
+            click.echo(tool_name)
