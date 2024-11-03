@@ -50,13 +50,16 @@ class ToolChoices:
         yield from plugins.load_tools().keys()
 
 
-tool = click.option(
+system_option = click.option("--system-message", "-s", help="System message.")
+tool_option = click.option(
     "--tool", "-t", help="Enable specified tools.", type=click.Choice(ToolChoices()), multiple=True
 )
-attachment = click.option(
+attachment_option = click.option(
     "--attachment", "-a", type=ATTACHMENT, help="Send attachment with prompt.", multiple=True
 )
-markdown = click.option("--markdown/--no-markdown", help="Render LLM responses as Markdown.", default=True)
+markdown_option = click.option(
+    "--markdown/--no-markdown", help="Render LLM responses as Markdown.", default=True
+)
 
 
 def process_tools(tool: tuple[str] | None) -> list[BaseTool] | None:
@@ -76,37 +79,46 @@ def process_renderer(markdown: bool) -> Callable[[Iterator[str]], None]:
 
 
 @click.command("prompt")
-@tool
-@attachment
-@markdown
+@system_option
+@tool_option
+@attachment_option
+@markdown_option
 @click.argument("prompt", required=True)
 @click.pass_obj
 def prompt_(
     provider: BaseChatModel,
     prompt: str,
+    system_message: str | None,
     tool: tuple[str] | None,
     attachment: tuple[Attachment] | None,
     markdown: bool,
 ):
-    chat.Chat(provider, tools=process_tools(tool)).prompt(prompt, process_renderer(markdown), attachment)
+    chat.Chat(provider, system_message=system_message, tools=process_tools(tool)).prompt(
+        prompt, process_renderer(markdown), attachment
+    )
 
 
 @click.command("chat")
-@tool
-@attachment
-@markdown
+@system_option
+@tool_option
+@attachment_option
+@markdown_option
 @click.option("--max-history-tokens", type=int, help="Max chat history tokens to keep.")
 @click.pass_obj
 def chat_(
     provider: BaseChatModel,
+    system_message: str | None,
     tool: tuple[str] | None,
     attachment: tuple[Attachment] | None,
     markdown: bool,
     max_history_tokens: int | None,
 ):
-    chat.Chat(provider, tools=process_tools(tool), max_history_tokens=max_history_tokens).chat(
-        process_renderer(markdown), attachment
-    )
+    chat.Chat(
+        provider,
+        system_message=system_message,
+        tools=process_tools(tool),
+        max_history_tokens=max_history_tokens,
+    ).chat(process_renderer(markdown), attachment)
 
 
 @cli.command(help="List available tools for tool-calling LLMs.")
