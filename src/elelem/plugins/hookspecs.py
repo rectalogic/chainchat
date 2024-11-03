@@ -17,10 +17,5 @@ hookimpl = HookimplMarker("elelem")
 
 
 @hookspec
-def register_providers(register: Callable[[click.Group], None]):
-    """Register LLM model providers click groups"""
-
-
-@hookspec
 def register_tools(register: Callable[[BaseTool], None]):
     """Register LLM tools"""

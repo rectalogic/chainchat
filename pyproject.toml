@@ -15,19 +15,15 @@ dependencies = [
     "python-dotenv~=1.0.1",
     "httpx~=0.27.2",
     "rich~=13.9.3",
+    "pydanclick~=0.3.0",
 ]
 classifiers = [
     "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
 ]
 
 [project.optional-dependencies]
-all = ["elelem-tools", "elelem-providers[all]"]
 tools = ["elelem-tools"]
-openai = ["elelem-providers[openai]"]
-anthropic = ["elelem-providers[anthropic]"]
-google = ["elelem-providers[google]"]
-groq = ["elelem-providers[groq]"]
-cerebras = ["elelem-providers[cerebras]"]
+#XXX add langchain model providers here
 
 [project.scripts]
 elelem = "elelem.cli:cli"
@@ -44,7 +40,6 @@ dev = [
 ]
 
 [tool.uv.sources]
-elelem-providers = { workspace = true }
 elelem-tools = { workspace = true }
 
 [tool.uv.workspace]

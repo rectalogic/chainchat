@@ -1,6 +1,7 @@
 # Copyright (C) 2024 Andrew Wason
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+import inspect
 from collections.abc import Callable, Iterator
 
 import click
@@ -10,29 +11,11 @@ from langchain_core.tools import BaseTool
 
 from . import chat, plugins
 from .attachment import ATTACHMENT, Attachment, build_message_with_attachments
+from .provider import build_provider_commands
 from .render import render_markdown, render_text
 
 
-class LazyProviderGroup(click.Group):
-    lazy_commands: list[str]
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.lazy_commands = sorted(plugins.load_providers().keys())
-
-    def list_commands(self, ctx: click.Context):
-        return super().list_commands(ctx) + self.lazy_commands
-
-    def get_command(self, ctx: click.Context, cmd_name: str):
-        if cmd_name in self.lazy_commands:
-            command = plugins.load_providers()[cmd_name]
-            command.add_command(prompt_)
-            command.add_command(chat_)
-            return command
-        return super().get_command(ctx, cmd_name)
-
-
-@click.group(cls=LazyProviderGroup)
+@click.group()
 @click.option(
     "--dotenv",
     "-e",
@@ -86,14 +69,14 @@ def process_renderer(markdown: bool) -> Callable[[Iterator[str]], None]:
 @click.argument("prompt", required=True)
 @click.pass_obj
 def prompt_(
-    provider: BaseChatModel,
+    model: BaseChatModel,
     prompt: str,
     system_message: str | None,
     tool: tuple[str] | None,
     attachment: tuple[Attachment] | None,
     markdown: bool,
 ):
-    chat.Chat(provider, system_message=system_message, tools=process_tools(tool)).prompt(
+    chat.Chat(model, system_message=system_message, tools=process_tools(tool)).prompt(
         prompt, process_renderer(markdown), attachment
     )
 
@@ -106,7 +89,7 @@ def prompt_(
 @click.option("--max-history-tokens", type=int, help="Max chat history tokens to keep.")
 @click.pass_obj
 def chat_(
-    provider: BaseChatModel,
+    model: BaseChatModel,
     system_message: str | None,
     tool: tuple[str] | None,
     attachment: tuple[Attachment] | None,
@@ -114,11 +97,14 @@ def chat_(
     max_history_tokens: int | None,
 ):
     chat.Chat(
-        provider,
+        model,
         system_message=system_message,
         tools=process_tools(tool),
         max_history_tokens=max_history_tokens,
     ).chat(process_renderer(markdown), attachment)
+
+
+build_provider_commands(cli, prompt_, chat_)
 
 
 @cli.command(help="List available tools for tool-calling LLMs.")

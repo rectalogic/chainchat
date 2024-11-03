@@ -5,7 +5,6 @@ from __future__ import annotations
 
 from functools import cache
 
-import click
 import pluggy
 from langchain_core.tools import BaseTool
 
@@ -18,18 +17,6 @@ def plugin_manager() -> pluggy.PluginManager:
     pm.add_hookspecs(hookspecs)
     pm.load_setuptools_entrypoints("elelem")
     return pm
-
-
-@cache
-def load_providers() -> dict[str, click.Group]:
-    providers: dict[str, click.Group] = {}
-
-    def register(provider: click.Group):
-        providers[provider.name] = provider
-
-    plugin_manager().hook.register_providers(register=register)
-
-    return providers
 
 
 @cache
