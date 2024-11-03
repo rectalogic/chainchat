@@ -1,5 +1,5 @@
 [project]
-name = "elelem"
+name = "chainchat"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -22,11 +22,11 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-tools = ["elelem-tools"]
+tools = ["chainchat-tools"]
 #XXX add langchain model providers here
 
 [project.scripts]
-elelem = "elelem.cli:cli"
+chainchat = "chainchat.cli:cli"
 
 [build-system]
 requires = ["hatchling"]
@@ -40,7 +40,7 @@ dev = [
 ]
 
 [tool.uv.sources]
-elelem-tools = { workspace = true }
+chainchat-tools = { workspace = true }
 
 [tool.uv.workspace]
 members = ["plugins/*"]

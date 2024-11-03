@@ -1,14 +1,14 @@
 [project]
-name = "elelem-tools"
+name = "chainchat-tools"
 dynamic = ["version"]
 dependencies = [
-    "elelem",
+    "chainchat",
     "click~=8.1.7",
     "langchain-community~=0.3.3",
 ]
 
-[project.entry-points.elelem]
-tools = "elelem_tools"
+[project.entry-points.chainchat]
+tools = "chainchat_tools"
 
 [build-system]
 requires = ["hatchling"]
@@ -20,4 +20,4 @@ path = "../../pyproject.toml"
 pattern = 'version = "(?P<version>[^"]+)'
 
 [tool.uv.sources]
-elelem = { workspace = true }
+chainchat = { workspace = true }

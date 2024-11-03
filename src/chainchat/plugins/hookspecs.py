@@ -12,8 +12,8 @@ if typing.TYPE_CHECKING:
     from langchain_core.tools import BaseTool
 
 
-hookspec = HookspecMarker("elelem")
-hookimpl = HookimplMarker("elelem")
+hookspec = HookspecMarker("chainchat")
+hookimpl = HookimplMarker("chainchat")
 
 
 @hookspec

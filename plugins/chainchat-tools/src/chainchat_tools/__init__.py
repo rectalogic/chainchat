@@ -8,10 +8,10 @@ from langchain_community.agent_toolkits.openapi.toolkit import RequestsToolkit
 from langchain_community.tools.brave_search.tool import BraveSearch
 from langchain_core.tools import BaseTool
 
-import elelem
+import chainchat
 
 
-@elelem.hookimpl
+@chainchat.hookimpl
 def register_tools(register: Callable[[BaseTool], None]):
     for tool in FileManagementToolkit().get_tools():
         register(tool)

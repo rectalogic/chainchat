@@ -13,9 +13,9 @@ from . import hookspecs
 
 @cache
 def plugin_manager() -> pluggy.PluginManager:
-    pm = pluggy.PluginManager("elelem")
+    pm = pluggy.PluginManager("chainchat")
     pm.add_hookspecs(hookspecs)
-    pm.load_setuptools_entrypoints("elelem")
+    pm.load_setuptools_entrypoints("chainchat")
     return pm
 
 
