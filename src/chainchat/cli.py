@@ -6,12 +6,12 @@ from collections.abc import Callable, Iterator
 import click
 from dotenv import load_dotenv
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.tools import BaseTool
 
-from . import chat, tool
+from . import chat
 from .attachment import ATTACHMENT, Attachment
 from .provider import build_provider_commands
 from .render import render_markdown, render_text
+from .tool import create_tools, load_tools
 
 
 @click.group()
@@ -29,7 +29,7 @@ def cli(dotenv: str | None):
 
 class ToolChoices:
     def __iter__(self):
-        yield from tool.load_tools().keys()
+        yield from load_tools().keys()
 
 
 system_option = click.option("--system-message", "-s", help="System message.")
@@ -42,18 +42,6 @@ attachment_option = click.option(
 markdown_option = click.option(
     "--markdown/--no-markdown", help="Render LLM responses as Markdown.", default=True
 )
-
-
-def process_tools(tool_names: tuple[str] | None) -> list[BaseTool] | None:
-    if not tool_names:
-        return None
-    tools: list[BaseTool] = []
-    valid_tools = tool.load_tools()
-    for tool_name in tool_names:
-        if tool_name not in valid_tools:
-            raise click.UsageError(f"Tool {tool_name} not found. Use `list-tools`.")
-        tools.append(valid_tools[tool_name]())
-    return tools
 
 
 def process_renderer(markdown: bool) -> Callable[[Iterator[str]], None]:
@@ -75,7 +63,7 @@ def prompt_(
     attachment: tuple[Attachment] | None,
     markdown: bool,
 ):
-    chat.Chat(model, system_message=system_message, tools=process_tools(tool)).prompt(
+    chat.Chat(model, system_message=system_message, tools=create_tools(tool)).prompt(
         prompt, process_renderer(markdown), attachment
     )
 
@@ -98,7 +86,7 @@ def chat_(
     chat.Chat(
         model,
         system_message=system_message,
-        tools=process_tools(tool),
+        tools=create_tools(tool),
         max_history_tokens=max_history_tokens,
     ).chat(process_renderer(markdown), attachment)
 
@@ -109,7 +97,7 @@ build_provider_commands(cli, prompt_, chat_)
 @cli.command(help="List available tools for tool-calling LLMs.")
 @click.option("--descriptions/--no-descriptions", default=False, help="Show tool descriptions.")
 def list_tools(descriptions: bool):
-    tools = tool.load_tools()
+    tools = load_tools()
     for tool_name in sorted(tools.keys()):
         if descriptions:
             click.echo(f"{tool_name}: {tools[tool_name].model_fields["description"].default}")

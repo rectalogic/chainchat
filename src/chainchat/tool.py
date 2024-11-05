@@ -4,13 +4,17 @@
 import inspect
 from functools import cache
 
-from langchain_community import tools
+import click
 from langchain_core.tools import BaseTool
 from pydantic_core import PydanticUndefinedType
 
 
 @cache
 def load_tools() -> dict[str, type[BaseTool]]:
+    try:
+        from langchain_community import tools
+    except ImportError:
+        return {}
     toolmap: dict[str, type[BaseTool]] = {}
     for classname in tools.__all__:
         cls = getattr(tools, classname)
@@ -20,3 +24,15 @@ def load_tools() -> dict[str, type[BaseTool]]:
         if not isinstance(name, PydanticUndefinedType):
             toolmap[cls.model_fields["name"].default] = cls
     return toolmap
+
+
+def create_tools(tool_names: tuple[str] | None) -> list[BaseTool] | None:
+    if not tool_names:
+        return None
+    tools: list[BaseTool] = []
+    valid_tools = load_tools()
+    for tool_name in tool_names:
+        if tool_name not in valid_tools:
+            raise click.UsageError(f"Tool {tool_name} not found. Use `list-tools`.")
+        tools.append(valid_tools[tool_name]())
+    return tools
