@@ -9,22 +9,9 @@ from langchain_core.language_models.chat_models import BaseChatModel
 
 from . import chat
 from .attachment import ATTACHMENT, Attachment
-from .provider import build_provider_commands
+from .model import LazyModelGroup
 from .render import render_markdown, render_text
 from .tool import create_tools, load_tools
-
-
-@click.group()
-@click.option(
-    "--dotenv",
-    "-e",
-    type=click.Path(exists=True, dir_okay=False),
-    default=".env",
-    help="Load environment variables (API keys) from a .env file.",
-)
-@click.version_option()
-def cli(dotenv: str | None):
-    load_dotenv(dotenv)
 
 
 class ToolChoices:
@@ -91,7 +78,17 @@ def chat_(
     ).chat(process_renderer(markdown), attachment)
 
 
-build_provider_commands(cli, prompt_, chat_)
+@click.group(cls=LazyModelGroup, subcommands=[prompt_, chat_])
+@click.option(
+    "--dotenv",
+    "-e",
+    type=click.Path(exists=True, dir_okay=False),
+    default=".env",
+    help="Load environment variables (API keys) from a .env file.",
+)
+@click.version_option()
+def cli(dotenv: str | None):
+    load_dotenv(dotenv)
 
 
 @cli.command(help="List available tools for tool-calling LLMs.")

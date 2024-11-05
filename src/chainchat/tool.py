@@ -8,6 +8,8 @@ import click
 from langchain_core.tools import BaseTool
 from pydantic_core import PydanticUndefinedType
 
+from .finder import find_package_classes_dynamic
+
 
 @cache
 def load_tools() -> dict[str, type[BaseTool]]:
@@ -16,10 +18,7 @@ def load_tools() -> dict[str, type[BaseTool]]:
     except ImportError:
         return {}
     toolmap: dict[str, type[BaseTool]] = {}
-    for classname in tools.__all__:
-        cls = getattr(tools, classname)
-        if not (inspect.isclass(cls) and issubclass(cls, BaseTool)):
-            continue
+    for cls in find_package_classes_dynamic(tools, BaseTool):
         name = cls.model_fields["name"].default
         if not isinstance(name, PydanticUndefinedType):
             toolmap[cls.model_fields["name"].default] = cls
