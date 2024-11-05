@@ -11,12 +11,12 @@ from . import chat
 from .attachment import ATTACHMENT, Attachment
 from .model import LazyModelGroup
 from .render import render_markdown, render_text
-from .tool import create_tools, load_tools
+from .tool import create_tools, load_tool_descriptions
 
 
 class ToolChoices:
     def __iter__(self):
-        yield from load_tools().keys()
+        yield from load_tool_descriptions().keys()
 
 
 system_option = click.option("--system-message", "-s", help="System message.")
@@ -94,9 +94,9 @@ def cli(dotenv: str | None):
 @cli.command(help="List available tools for tool-calling LLMs.")
 @click.option("--descriptions/--no-descriptions", default=False, help="Show tool descriptions.")
 def list_tools(descriptions: bool):
-    tools = load_tools()
+    tools = load_tool_descriptions()
     for tool_name in sorted(tools.keys()):
         if descriptions:
-            click.echo(f"{tool_name}: {tools[tool_name].model_fields["description"].default}")
+            click.echo(f"{tool_name}: {tools[tool_name]}")
         else:
             click.echo(tool_name)

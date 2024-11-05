@@ -2,9 +2,15 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 import inspect
-from collections.abc import Generator
-from importlib import import_module
+from collections.abc import Generator, Mapping
+from functools import cache
+from importlib import import_module, metadata
 from types import ModuleType
+
+
+@cache
+def packages_distributions() -> Mapping[str, list[str]]:
+    return metadata.packages_distributions()
 
 
 def find_package_classes[T](

@@ -2,17 +2,16 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 import functools
-import inspect
 import re
 import sqlite3
-from importlib import import_module, metadata
+from importlib import import_module
 
 import click
 import pydanclick
 from langchain_core.language_models.chat_models import BaseChatModel
 
 from .cache import format_distributions_key, models_execute
-from .finder import find_package_classes, find_package_classes_dynamic
+from .finder import find_package_classes, find_package_classes_dynamic, packages_distributions
 
 # https://stackoverflow.com/a/1176023/1480205
 OPTION_NAME_RE = re.compile(
@@ -76,7 +75,7 @@ def installed_model_commands() -> dict[str, sqlite3.Row]:
     distributions_keys: list[str] = []
     with models_execute() as cursor:
         ignored_packages = ("langchain_core", "langchain_text_splitters")
-        for package, distributions in metadata.packages_distributions().items():
+        for package, distributions in packages_distributions().items():
             if not package.startswith("langchain_") or package in ignored_packages:
                 continue
             # XXX ignore for now
