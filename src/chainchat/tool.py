@@ -9,32 +9,36 @@ import click
 from langchain_core.tools import BaseTool
 from pydantic_core import PydanticUndefinedType
 
-from .cache import distributions_exist, format_distributions_key, tools_execute
+from .cache import distributions_cached, format_distributions_key, tools_execute
 from .finder import find_package_classes, packages_distributions
 
 
 @cache
-def load_tool_descriptions() -> dict[str, str]:
-    return {name: row["description"] for name, row in installed_tools().items()}
+def load_tool_descriptions(tool_discovery: tuple[str, ...]) -> dict[str, str]:
+    return {name: row["description"] for name, row in discover_tools(tool_discovery).items()}
 
 
-def installed_tools() -> dict[str, sqlite3.Row]:
+def discover_tools(tool_discovery: tuple[str, ...]) -> dict[str, sqlite3.Row]:
+    tools: dict[str, sqlite3.Row] = {}
     with tools_execute() as cursor:
-        package = "langchain_community"
-        if package not in packages_distributions():
-            return {}
-        distributions = packages_distributions()[package]
-        distributions_key = format_distributions_key(distributions)
-        if not distributions_exist(cursor, "tools", distributions_key):
-            update_cache(cursor, package, distributions_key)
+        for package in tool_discovery:
+            module = package
+            package = package.split(".")[0]
+            if package not in packages_distributions():
+                continue
+            distributions = packages_distributions()[package]
+            distributions_key = format_distributions_key(distributions)
+            if not distributions_cached(cursor, "tools", distributions_key):
+                update_cache(cursor, module, distributions_key)
 
-        return {
-            row["name"]: row
-            for row in cursor.execute(
-                "SELECT * FROM tools WHERE distributions = :distributions_key",
-                {"distributions_key": distributions_key},
-            ).fetchall()
-        }
+            tools.update(
+                (row["name"], row)
+                for row in cursor.execute(
+                    "SELECT * FROM tools WHERE distributions = :distributions_key",
+                    {"distributions_key": distributions_key},
+                ).fetchall()
+            )
+    return tools
 
 
 def get_tool_attr(cls: type[BaseTool], attr: str) -> str | None:
@@ -42,10 +46,7 @@ def get_tool_attr(cls: type[BaseTool], attr: str) -> str | None:
     return value if not isinstance(value, PydanticUndefinedType) else None
 
 
-def update_cache(cursor: sqlite3.Cursor, package: str, distributions_key: str):
-    if package == "langchain_community":
-        package = "langchain_community.tools"
-
+def update_cache(cursor: sqlite3.Cursor, module: str, distributions_key: str):
     values = (
         {
             "distributions": distributions_key,
@@ -54,7 +55,7 @@ def update_cache(cursor: sqlite3.Cursor, package: str, distributions_key: str):
             "name": get_tool_attr(cls, "name"),
             "description": get_tool_attr(cls, "description"),
         }
-        for cls in find_package_classes(package, BaseTool)
+        for cls in find_package_classes(module, BaseTool)
         if get_tool_attr(cls, "name") is not None
     )
     cursor.executemany(
@@ -62,10 +63,10 @@ def update_cache(cursor: sqlite3.Cursor, package: str, distributions_key: str):
     )
 
 
-def create_tools(tool_names: tuple[str] | None) -> list[BaseTool] | None:
+def create_tools(tool_names: tuple[str] | None, tool_discovery: tuple[str, ...]) -> list[BaseTool] | None:
     if not tool_names:
         return None
-    tools_data = installed_tools()
+    tools_data = discover_tools(tool_discovery)
     tools: list[BaseTool] = []
     for tool_name in tool_names:
         if tool_name not in tools_data:

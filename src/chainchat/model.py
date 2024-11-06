@@ -9,7 +9,7 @@ import click
 import pydanclick
 from langchain_core.language_models.chat_models import BaseChatModel
 
-from .cache import distributions_exist, format_distributions_key, models_execute
+from .cache import distributions_cached, format_distributions_key, models_execute
 from .finder import find_package_classes, packages_distributions
 
 # https://stackoverflow.com/a/1176023/1480205
@@ -29,7 +29,7 @@ class LazyModelGroup(click.Group):
     def __init__(self, *args, subcommands=list[click.Command], **kwargs):
         super().__init__(*args, **kwargs)
         self.subcommands = subcommands
-        self.installed_commands = installed_model_commands()
+        self.installed_commands = discover_models()
 
     def list_commands(self, ctx: click.Context):
         return super().list_commands(ctx) + sorted(self.installed_commands.keys())
@@ -79,7 +79,7 @@ class LazyModelGroup(click.Group):
         return command
 
 
-def installed_model_commands() -> dict[str, sqlite3.Row]:
+def discover_models() -> dict[str, sqlite3.Row]:
     distributions_keys: list[str] = []
     with models_execute() as cursor:
         ignored_packages = ("langchain_core", "langchain_text_splitters")
@@ -88,7 +88,7 @@ def installed_model_commands() -> dict[str, sqlite3.Row]:
                 continue
             distributions_key = format_distributions_key(distributions)
             distributions_keys.append(distributions_key)
-            if not distributions_exist(cursor, "models", distributions_key):
+            if not distributions_cached(cursor, "models", distributions_key):
                 update_cache(cursor, package, distributions_key)
 
         # XXX deal with conflicting duplicate class names in multiple packages
