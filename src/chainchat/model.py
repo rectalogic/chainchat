@@ -1,7 +1,6 @@
 # Copyright (C) 2024 Andrew Wason
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-import functools
 import re
 import sqlite3
 from importlib import import_module
@@ -10,8 +9,8 @@ import click
 import pydanclick
 from langchain_core.language_models.chat_models import BaseChatModel
 
-from .cache import format_distributions_key, models_execute
-from .finder import find_package_classes, find_package_classes_dynamic, packages_distributions
+from .cache import distributions_exist, format_distributions_key, models_execute
+from .finder import find_package_classes, packages_distributions
 
 # https://stackoverflow.com/a/1176023/1480205
 OPTION_NAME_RE = re.compile(
@@ -53,7 +52,16 @@ class LazyModelGroup(click.Group):
         @pydanclick.from_pydantic(
             "model",
             cls,
-            exclude=("cache", "callbacks", "callback_manager", "rate_limiter"),
+            exclude=(
+                "llm",
+                "client",
+                "async_client",
+                "client_preview",
+                "cache",
+                "callbacks",
+                "callback_manager",
+                "rate_limiter",
+            ),
             # XXX ignore_unsupported=True
             parse_docstring=False,
         )
@@ -78,21 +86,14 @@ def installed_model_commands() -> dict[str, sqlite3.Row]:
         for package, distributions in packages_distributions().items():
             if not package.startswith("langchain_") or package in ignored_packages:
                 continue
-            # XXX ignore for now
-            if package == "langchain_community":
-                continue
             distributions_key = format_distributions_key(distributions)
             distributions_keys.append(distributions_key)
-            existing = cursor.execute(
-                "SELECT count(*) FROM models WHERE distributions = :distributions",
-                {"distributions": distributions_key},
-            ).fetchone()[0]
-            if not existing:
+            if not distributions_exist(cursor, "models", distributions_key):
                 update_cache(cursor, package, distributions_key)
 
         # XXX deal with conflicting duplicate class names in multiple packages
         return {
-            command_name(row["class"]): row
+            command_name(row["module"], row["class"]): row
             for row in cursor.execute(
                 f"SELECT * FROM models WHERE distributions IN ({','.join(['?'] * len(distributions_keys))})",
                 distributions_keys,
@@ -102,16 +103,20 @@ def installed_model_commands() -> dict[str, sqlite3.Row]:
 
 def update_cache(cursor: sqlite3.Cursor, package: str, distributions_key: str):
     if package == "langchain_community":
-        class_finder = functools.partial(find_package_classes_dynamic, "langchain_community.chat_models")
+        package = "langchain_community.chat_models"
+        from_all = True
     else:
-        class_finder = functools.partial(find_package_classes, package)
+        from_all = False
 
     values = (
         {"distributions": distributions_key, "module": cls.__module__, "class": cls.__name__}
-        for cls in class_finder(BaseChatModel)
+        for cls in find_package_classes(package, BaseChatModel, from_all)
     )
     cursor.executemany("INSERT INTO models VALUES(:distributions, :module, :class)", values)
 
 
-def command_name(classname: str) -> str:
-    return OPTION_NAME_RE.sub("-", classname.replace("Chat", "")).lower()
+def command_name(module: str, classname: str) -> str:
+    name = OPTION_NAME_RE.sub("-", classname.replace("Chat", "")).lower()
+    if module.startswith("langchain_community."):
+        return f"community-{name}"
+    return name

@@ -14,27 +14,19 @@ def packages_distributions() -> Mapping[str, list[str]]:
 
 
 def find_package_classes[T](
-    package: str | ModuleType, base_class: type[T]
+    package: str | ModuleType, base_class: type[T], from_all: bool = False
 ) -> Generator[type[T], None, None]:
     if isinstance(package, ModuleType):
         module = package
     else:
         module = import_module(package)
-    for _, cls in inspect.getmembers(module, inspect.isclass):
-        if not issubclass(cls, base_class):
-            continue
-        yield cls
 
-
-def find_package_classes_dynamic[T](
-    package: str | ModuleType, base_class: type[T]
-) -> Generator[type[T], None, None]:
-    if isinstance(package, ModuleType):
-        module = package
+    if from_all:
+        for classname in module.__all__:
+            cls = getattr(module, classname)
+            if inspect.isclass(cls) and issubclass(cls, base_class):
+                yield cls
     else:
-        module = import_module(package)
-    for classname in module.__all__:
-        cls = getattr(module, classname)
-        if not (inspect.isclass(cls) and issubclass(cls, base_class)):
-            continue
-        yield cls
+        for _, cls in inspect.getmembers(module, inspect.isclass):
+            if issubclass(cls, base_class):
+                yield cls

@@ -3,7 +3,7 @@
 
 import pathlib
 import sqlite3
-from collections.abc import Generator
+from collections.abc import Iterator
 from contextlib import closing, contextmanager
 from importlib.metadata import version
 
@@ -19,26 +19,44 @@ def db_path() -> pathlib.Path:
 
 
 @contextmanager
-def execute(schema: str) -> Generator[sqlite3.Cursor, None, None]:
+def execute(schema: str) -> Iterator[sqlite3.Cursor]:
     connection = sqlite3.connect(db_path(), autocommit=False)
     connection.row_factory = sqlite3.Row
     with closing(connection):
-        cursor = connection.cursor()
-        with closing(cursor):
-            cursor.execute(schema)
+        with connection:
+            connection.executescript(schema)
+        with connection, closing(connection.cursor()) as cursor:
             yield cursor
-        connection.commit()
 
 
 def format_distributions_key(distributions: list[str]) -> str:
     return ",".join(f"{distribution}-{version(distribution)}" for distribution in distributions)
 
 
-def models_execute() -> Generator[sqlite3.Cursor, None, None]:
-    return execute("CREATE TABLE IF NOT EXISTS models (distributions TEXT, module TEXT, class TEXT)")
-
-
-def tools_execute() -> Generator[sqlite3.Cursor, None, None]:
+def models_execute():
     return execute(
-        "CREATE TABLE IF NOT EXISTS tools (distributions TEXT, module TEXT, class TEXT, name TEXT, description TEXT)"
+        """
+        CREATE TABLE IF NOT EXISTS models (distributions TEXT, module TEXT, class TEXT);
+        CREATE INDEX IF NOT EXISTS models_distributions_idx ON models (distributions);
+        """
+    )
+
+
+def tools_execute():
+    return execute(
+        """
+        CREATE TABLE IF NOT EXISTS tools (distributions TEXT, module TEXT, class TEXT, name TEXT, description TEXT);
+        CREATE INDEX IF NOT EXISTS tools_distributions_idx ON tools (distributions);
+        """
+    )
+
+
+def distributions_exist(cursor: sqlite3.Cursor, table: str, distributions: str) -> bool:
+    # https://stackoverflow.com/questions/9755860/valid-query-to-check-if-row-exists-in-sqlite3#9756276
+    return (
+        cursor.execute(
+            f"SELECT EXISTS(SELECT 1 FROM {table} WHERE distributions = :distributions)",
+            {"distributions": distributions},
+        ).fetchone()[0]
+        == 1
     )

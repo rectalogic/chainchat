@@ -1,7 +1,7 @@
 # Copyright (C) 2024 Andrew Wason
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 
 import click
 from dotenv import load_dotenv
@@ -14,14 +14,20 @@ from .render import render_markdown, render_text
 from .tool import create_tools, load_tool_descriptions
 
 
-class ToolChoices:
+class LazyToolChoices(Sequence):
     def __iter__(self):
         yield from load_tool_descriptions().keys()
+
+    def __len__(self) -> int:
+        return 0
+
+    def __getitem__(self, index):
+        raise IndexError
 
 
 system_option = click.option("--system-message", "-s", help="System message.")
 tool_option = click.option(
-    "--tool", "-t", help="Enable specified tools.", type=click.Choice(ToolChoices()), multiple=True
+    "--tool", "-t", help="Enable specified tools.", type=click.Choice(LazyToolChoices()), multiple=True
 )
 attachment_option = click.option(
     "--attachment", "-a", type=ATTACHMENT, help="Send attachment with prompt.", multiple=True

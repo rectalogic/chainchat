@@ -1,7 +1,6 @@
 # Copyright (C) 2024 Andrew Wason
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-import functools
 import sqlite3
 from functools import cache
 from importlib import import_module
@@ -10,8 +9,8 @@ import click
 from langchain_core.tools import BaseTool
 from pydantic_core import PydanticUndefinedType
 
-from .cache import format_distributions_key, tools_execute
-from .finder import find_package_classes, find_package_classes_dynamic, packages_distributions
+from .cache import distributions_exist, format_distributions_key, tools_execute
+from .finder import find_package_classes, packages_distributions
 
 
 @cache
@@ -26,11 +25,7 @@ def installed_tools() -> dict[str, sqlite3.Row]:
             return {}
         distributions = packages_distributions()[package]
         distributions_key = format_distributions_key(distributions)
-        existing = cursor.execute(
-            "SELECT count(*) FROM tools WHERE distributions = :distributions",
-            {"distributions": distributions_key},
-        ).fetchone()[0]
-        if not existing:
+        if not distributions_exist(cursor, "tools", distributions_key):
             update_cache(cursor, package, distributions_key)
 
         return {
@@ -42,16 +37,17 @@ def installed_tools() -> dict[str, sqlite3.Row]:
         }
 
 
-def get_tool_attr(cls: BaseTool, attr: str) -> str | None:
+def get_tool_attr(cls: type[BaseTool], attr: str) -> str | None:
     value = cls.model_fields[attr].default
     return value if not isinstance(value, PydanticUndefinedType) else None
 
 
 def update_cache(cursor: sqlite3.Cursor, package: str, distributions_key: str):
     if package == "langchain_community":
-        class_finder = functools.partial(find_package_classes_dynamic, "langchain_community.tools")
+        package = "langchain_community.tools"
+        from_all = True
     else:
-        class_finder = functools.partial(find_package_classes, package)
+        from_all = False
 
     values = (
         {
@@ -61,7 +57,7 @@ def update_cache(cursor: sqlite3.Cursor, package: str, distributions_key: str):
             "name": get_tool_attr(cls, "name"),
             "description": get_tool_attr(cls, "description"),
         }
-        for cls in class_finder(BaseTool)
+        for cls in find_package_classes(package, BaseTool, from_all)
         if get_tool_attr(cls, "name") is not None
     )
     cursor.executemany(
