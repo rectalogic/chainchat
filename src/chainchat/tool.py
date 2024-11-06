@@ -10,7 +10,7 @@ from langchain_core.tools import BaseTool
 from pydantic_core import PydanticUndefinedType
 
 from .cache import distributions_cached, format_distributions_key, tools_execute
-from .finder import find_package_classes, packages_distributions
+from .finder import find_package_classes, find_packages_distributions
 
 
 @cache
@@ -24,9 +24,9 @@ def discover_tools(tool_discovery: tuple[str, ...]) -> dict[str, sqlite3.Row]:
         for package in tool_discovery:
             module = package
             package = package.split(".")[0]
-            if package not in packages_distributions():
+            if package not in find_packages_distributions():
                 continue
-            distributions = packages_distributions()[package]
+            distributions = find_packages_distributions()[package]
             distributions_key = format_distributions_key(distributions)
             if not distributions_cached(cursor, "tools", distributions_key):
                 update_cache(cursor, module, distributions_key)

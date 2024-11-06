@@ -10,7 +10,7 @@ import pydanclick
 from langchain_core.language_models.chat_models import BaseChatModel
 
 from .cache import distributions_cached, format_distributions_key, models_execute
-from .finder import find_package_classes, packages_distributions
+from .finder import find_package_classes, find_packages_distributions
 
 # https://stackoverflow.com/a/1176023/1480205
 OPTION_NAME_RE = re.compile(
@@ -80,18 +80,26 @@ class LazyModelGroup(click.Group):
 
 
 def discover_models() -> dict[str, sqlite3.Row]:
+    # Default to langchain_ prefixed packages and langchain_community.chat_models
+    ignored_packages = ("langchain_core", "langchain_text_splitters")
+    packages_distributions = {
+        package: distributions
+        for package, distributions in find_packages_distributions().items()
+        if package.startswith("langchain_") and package not in ignored_packages
+    }
+    if "langchain_community" in packages_distributions:
+        packages_distributions["langchain_community.chat_models"] = packages_distributions.pop(
+            "langchain_community"
+        )
+
     distributions_keys: list[str] = []
     with models_execute() as cursor:
-        ignored_packages = ("langchain_core", "langchain_text_splitters")
-        for package, distributions in packages_distributions().items():
-            if not package.startswith("langchain_") or package in ignored_packages:
-                continue
+        for package, distributions in packages_distributions.items():
             distributions_key = format_distributions_key(distributions)
             distributions_keys.append(distributions_key)
             if not distributions_cached(cursor, "models", distributions_key):
                 update_cache(cursor, package, distributions_key)
 
-        # XXX deal with conflicting duplicate class names in multiple packages
         return {
             command_name(row["module"], row["class"]): row
             for row in cursor.execute(
@@ -102,9 +110,6 @@ def discover_models() -> dict[str, sqlite3.Row]:
 
 
 def update_cache(cursor: sqlite3.Cursor, package: str, distributions_key: str):
-    if package == "langchain_community":
-        package = "langchain_community.chat_models"
-
     values = (
         {"distributions": distributions_key, "module": cls.__module__, "class": cls.__name__}
         for cls in find_package_classes(package, BaseChatModel)

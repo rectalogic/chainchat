@@ -9,7 +9,7 @@ from types import ModuleType
 
 
 @cache
-def packages_distributions() -> Mapping[str, list[str]]:
+def find_packages_distributions() -> Mapping[str, list[str]]:
     return metadata.packages_distributions()
 
 
