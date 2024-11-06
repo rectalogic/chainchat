@@ -45,9 +45,6 @@ def get_tool_attr(cls: type[BaseTool], attr: str) -> str | None:
 def update_cache(cursor: sqlite3.Cursor, package: str, distributions_key: str):
     if package == "langchain_community":
         package = "langchain_community.tools"
-        from_all = True
-    else:
-        from_all = False
 
     values = (
         {
@@ -57,7 +54,7 @@ def update_cache(cursor: sqlite3.Cursor, package: str, distributions_key: str):
             "name": get_tool_attr(cls, "name"),
             "description": get_tool_attr(cls, "description"),
         }
-        for cls in find_package_classes(package, BaseTool, from_all)
+        for cls in find_package_classes(package, BaseTool)
         if get_tool_attr(cls, "name") is not None
     )
     cursor.executemany(

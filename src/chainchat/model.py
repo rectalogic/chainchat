@@ -104,13 +104,10 @@ def installed_model_commands() -> dict[str, sqlite3.Row]:
 def update_cache(cursor: sqlite3.Cursor, package: str, distributions_key: str):
     if package == "langchain_community":
         package = "langchain_community.chat_models"
-        from_all = True
-    else:
-        from_all = False
 
     values = (
         {"distributions": distributions_key, "module": cls.__module__, "class": cls.__name__}
-        for cls in find_package_classes(package, BaseChatModel, from_all)
+        for cls in find_package_classes(package, BaseChatModel)
     )
     cursor.executemany("INSERT INTO models VALUES(:distributions, :module, :class)", values)
 

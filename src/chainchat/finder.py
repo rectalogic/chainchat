@@ -14,14 +14,14 @@ def packages_distributions() -> Mapping[str, list[str]]:
 
 
 def find_package_classes[T](
-    package: str | ModuleType, base_class: type[T], from_all: bool = False
+    package: str | ModuleType, base_class: type[T]
 ) -> Generator[type[T], None, None]:
     if isinstance(package, ModuleType):
         module = package
     else:
         module = import_module(package)
 
-    if from_all:
+    if hasattr(module, "__all__"):
         for classname in module.__all__:
             cls = getattr(module, classname)
             if inspect.isclass(cls) and issubclass(cls, base_class):

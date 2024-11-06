@@ -1,6 +1,7 @@
 # Copyright (C) 2024 Andrew Wason
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
+import os
 from collections.abc import Callable, Iterator, Sequence
 
 import click
@@ -92,9 +93,19 @@ def chat_(
     default=".env",
     help="Load environment variables (API keys) from a .env file.",
 )
+@click.option(
+    "--alias-env",
+    "-a",
+    nargs=2,
+    help="Alias an existing environment variable under another name, i.e. VAR1=$VAR2.",
+    multiple=True,
+)
 @click.version_option()
-def cli(dotenv: str | None):
+def cli(dotenv: str | None, alias_env: tuple[tuple[str, str], ...]):
     load_dotenv(dotenv)
+    for alias, env_var in alias_env:
+        if env_var in os.environ:
+            os.environ[alias] = os.environ[env_var]
 
 
 @cli.command(help="List available tools for tool-calling LLMs.")
