@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import base64
+import enum
 import mimetypes
+from functools import cached_property
 from typing import TYPE_CHECKING, Any
 
 import click
@@ -17,52 +19,106 @@ if TYPE_CHECKING:
 mimetypes.init()
 
 
-def data_url(data: bytes, mimetype: str) -> str:
-    data = base64.b64encode(data).decode("utf-8")
-    return f"data:{mimetype};base64,{data}"
+class AttachmentType(enum.StrEnum):
+    ANTHROPIC = "anthropic"
+    OPENAI = "openai"
+    IMAGE_URL = "image_url"
+    IMAGE_URL_BASE64 = "image_url_base64"
 
 
 class Attachment:
-    def __init__(self, url: str, mimetype: str | None = None):
-        """
-        `url` is any url or path. If a url or path is prefixed with `data:` it will be loaded and
-        base64 encoded, otherwise it will be used as-is.
-        """
-        if url.startswith("data:"):
-            url = url[5:]
-            encode_data = True
-        else:
-            encode_data = False
-        if not mimetype:
-            mimetype, _ = mimetypes.guess_type(url, strict=False)
+    def __init__(
+        self,
+        url: str,
+        attachment_type: AttachmentType = AttachmentType.IMAGE_URL,
+        mimetype: str | None = None,
+    ):
+        self.attachment_type = attachment_type
         self.mimetype = mimetype
-        if "://" in url:
-            if encode_data:
-                if not self.mimetype:
-                    response = httpx.head(url)
-                    response.raise_for_status()
-                    self.mimetype = response.headers.get("content-type", "application/octet-stream")
-                self.url = data_url(httpx.get(url).content, self.mimetype)
-            else:
-                if not self.mimetype:
-                    self.mimetype = "application/octet-stream"
-                self.url = url
+        self.url = url
+
+    @cached_property
+    def resolved_mimetype(self) -> str:
+        if self.mimetype:
+            return self.mimetype
+        if not self.is_local:
+            response = httpx.head(self.url)
+            response.raise_for_status()
+            return response.headers.get("content-type", "application/octet-stream")
         else:
-            if not self.mimetype:
-                self.mimetype = "application/octet-stream"
-            if encode_data:
-                with open(url, "rb") as f:
-                    self.url = data_url(f.read(), self.mimetype)
-            else:
-                self.url = url
+            return mimetypes.guess_type(self.url, strict=False)[0] or "application/octet-stream"
+
+    @cached_property
+    def is_local(self) -> bool:
+        return "://" not in self.url
+
+    def content(self) -> bytes:
+        if not self.is_local:
+            response = httpx.get(self.url)
+            response.raise_for_status()
+            return response.content
+        else:
+            with open(self.url, "rb") as f:
+                return f.read()
+
+    def base64_content(self) -> str:
+        return base64.b64encode(self.content()).decode("utf-8")
+
+    def data_url(self) -> str:
+        return f"data:{self.resolved_mimetype};base64,{self.base64_content()}"
 
     def to_message_content(self) -> dict:
-        # openai supports images, and audio using a different format
+        # openai supports images, and audio using a different format - "input_audio"
         # gemini supports images, pdf, audio, video using image_url
-        return {
-            "type": "image_url",
-            "image_url": {"url": self.url},
-        }
+
+        attachment_type = self.attachment_type
+        if attachment_type is AttachmentType.OPENAI:
+            if self.resolved_mimetype.startswith("image/"):
+                attachment_type = (
+                    AttachmentType.IMAGE_URL_BASE64 if self.is_local else AttachmentType.IMAGE_URL
+                )
+            elif self.resolved_mimetype.startswith("audio/"):
+                return {
+                    "type": "input_audio",
+                    "input_audio": {
+                        "data": self.base64_content(),
+                        "format": "wav" if self.resolved_mimetype == "audio/wave" else "mp3",
+                    },
+                }
+        if attachment_type is AttachmentType.IMAGE_URL:
+            if self.is_local:
+                attachment_type = AttachmentType.IMAGE_URL_BASE64
+            else:
+                return {
+                    "type": "image_url",
+                    "image_url": {"url": self.url},
+                }
+        if attachment_type is AttachmentType.IMAGE_URL_BASE64:
+            return {
+                "type": "image_url",
+                "image_url": {"url": self.data_url()},
+            }
+        if attachment_type is AttachmentType.ANTHROPIC:
+            if self.resolved_mimetype.startswith("image/"):
+                return {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": self.resolved_mimetype,
+                        "data": self.base64_content,
+                    },
+                }
+            if self.resolved_mimetype.startswith("application/pdf"):
+                return {
+                    "type": "document",
+                    "source": {
+                        "type": "base64",
+                        "media_type": self.resolved_mimetype,
+                        "data": self.base64_content,
+                    },
+                }
+
+        raise click.UsageError(f"Unsupported attachment {self.url}")
 
 
 class AttachmentParamType(click.ParamType):
@@ -71,10 +127,14 @@ class AttachmentParamType(click.ParamType):
     def convert(self, value: Any, param: click.Parameter | None, ctx: click.Context):
         if isinstance(value, Attachment):
             return value
+        return Attachment(value)
 
-        return Attachment(
-            value,
-        )
+
+def attachment_type_callback(ctx: click.Context, param: click.Parameter, values: Any) -> tuple[Attachment]:
+    try:
+        return tuple(Attachment(url, AttachmentType(atype)) for url, atype in values)
+    except ValueError as e:
+        click.UsageError(f"Invalid attachment type {str(e)}")
 
 
 ATTACHMENT = AttachmentParamType()
