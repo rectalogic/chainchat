@@ -87,9 +87,6 @@ class Chat:
     def _run_chain(self, state: MessagesState):
         return {"messages": [self.chain.invoke(state)]}
 
-    def invoke(self, messages: Sequence[MessageLikeRepresentation]):
-        yield self.graph.invoke({"messages": messages})
-
     def stream(self, messages: Sequence[MessageLikeRepresentation]):
         for chunk, _ in self.graph.stream(
             {"messages": messages},
@@ -114,9 +111,10 @@ class Chat:
             while True:
                 prompt = input("> ")
                 if prompt == ">>>":
-                    prompt = ""
-                    while prompt != "<<<":
-                        prompt += input(". ") + "\n"
+                    lines = []
+                    while line := input(". ") != "<<<":
+                        lines.append(line)
+                    prompt = "\n".join(lines)
 
                 self.prompt(prompt, renderer, attachments)
                 attachments = None

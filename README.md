@@ -9,6 +9,23 @@ and [multimodality](https://python.langchain.com/docs/concepts/multimodality/).
 ChainChat will introspect any installed `langchain_*` packages and make any `BaseChatModel` subclasses
 available as commands with the models attributes as options - `chainchat <model-command> --<option> <value>`.
 
+Just `pip install` any model packages you want to use, and they will be available as commands:
+```sh-session
+$ chainchat
+...
+Commands:
+  list-tools          List available tools for tool-calling LLMs.
+$ pip install langchain_openai langchain_anthropic
+$ chainchat
+...
+Commands:
+  list-tools          List available tools for tool-calling LLMs.
+  anthropic           See...
+  anthropic-messages  See...
+  azure-open-ai       See...
+  open-ai             See...
+...
+
 ## API Keys
 
 API keys are accessed via environment variables.
