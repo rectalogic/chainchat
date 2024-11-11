@@ -16,6 +16,7 @@ dependencies = [
     "rich~=13.9.3",
     "pydanclick~=0.3.0",
     "platformdirs~=4.3.6",
+    "pyyaml~=6.0.2",
 ]
 classifiers = [
     "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",

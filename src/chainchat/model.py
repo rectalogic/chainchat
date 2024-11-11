@@ -8,9 +8,11 @@ from importlib import import_module
 import click
 import pydanclick
 from langchain_core.language_models.chat_models import BaseChatModel
+from pydantic import ValidationError
 
 from .cache import distributions_cached, format_distributions_key, models_execute
 from .finder import find_package_classes, find_packages_distributions
+from .loader import load_yaml
 
 # https://stackoverflow.com/a/1176023/1480205
 OPTION_NAME_RE = re.compile(
@@ -122,3 +124,17 @@ def command_name(module: str, classname: str) -> str:
     if module.startswith("langchain_community."):
         return f"community-{name}"
     return name
+
+
+def load_custom_model(name: str, path: str) -> BaseChatModel:
+    model_dict = load_yaml(path).get(name, {})
+    if "class" not in model_dict:
+        raise click.UsageError(f"Model {name} 'class' not found.")
+    module, classname = model_dict["class"].rsplit(".", 1)
+    try:
+        cls = getattr(import_module(module), classname)
+        return cls.model_validate(model_dict.get("args", {}))
+    except (AttributeError, ImportError) as e:
+        raise click.UsageError(f"Model {name} {model_dict["class"]} not found.") from e
+    except ValidationError as e:
+        raise click.UsageError(f"Model {name} {model_dict["class"]} invalid args: {str(e)}.") from e

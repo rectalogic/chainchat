@@ -11,7 +11,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 
 from . import chat
 from .attachment import ATTACHMENT, Attachment, AttachmentType, attachment_type_callback
-from .model import LazyModelGroup
+from .model import LazyModelGroup, load_custom_model
 from .render import render_markdown, render_text
 from .tool import create_tools, load_tool_descriptions
 
@@ -125,6 +125,23 @@ def cli(
             os.environ[alias] = os.environ[env_var]
     ctx.ensure_object(dict)
     ctx.obj["tool_discovery"] = tool_discovery
+
+
+@cli.group(help="Load a custom model from YAML.")
+@click.option("--name", "-n", default="default", help="Name of the model to load.")
+@click.option(
+    "--path",
+    type=click.Path(exists=True, dir_okay=False),
+    help="Path to models yaml file",
+    default="./models.yaml",
+)
+@click.pass_context
+def custom(ctx: click.Context, path: str, name: str):
+    ctx.obj = load_custom_model(name, path)
+
+
+custom.add_command(prompt_)
+custom.add_command(chat_)
 
 
 @cli.command(help="List available tools for tool-calling LLMs.")
