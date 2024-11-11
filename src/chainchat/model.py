@@ -28,9 +28,8 @@ OPTION_NAME_RE = re.compile(
 
 
 class LazyModelGroup(click.Group):
-    def __init__(self, *args, subcommands=list[click.Command], **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.subcommands = subcommands
         self.installed_commands = discover_models()
 
     def list_commands(self, ctx: click.Context):
@@ -47,7 +46,7 @@ class LazyModelGroup(click.Group):
         cls = getattr(import_module(module), classname)
         partial_package = module.split(".")[0].removeprefix("langchain_")
 
-        @self.group(
+        @self.command(
             cmd_name,
             help=f"See https://python.langchain.com/api_reference/{partial_package}/chat_models/{fullname}.html",
         )
@@ -67,12 +66,8 @@ class LazyModelGroup(click.Group):
             # XXX ignore_unsupported=True
             parse_docstring=False,
         )
-        @click.pass_context
-        def command(ctx: click.Context, model: BaseChatModel):
-            ctx.obj = model
-
-        for subcommand in self.subcommands:
-            command.add_command(subcommand)
+        def command(model: BaseChatModel):
+            return model
 
         # XXX fix
         # for p in command.params:
