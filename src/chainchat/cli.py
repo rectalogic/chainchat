@@ -3,7 +3,6 @@
 
 import os
 from collections.abc import Callable, Iterator
-from typing import cast
 
 import click
 from dotenv import load_dotenv
@@ -12,6 +11,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from . import chat
 from .attachment import ATTACHMENT, Attachment, AttachmentType, attachment_type_callback
 from .model import LazyModelGroup, load_custom_model
+from .pipe import chainpipe
 from .render import render_markdown, render_text
 from .tool import create_tools, load_tool_descriptions
 
@@ -127,3 +127,44 @@ def list_tools(ctx: click.Context, descriptions: bool):
             click.echo(f"{tool_name}: {tools[tool_name]}")
         else:
             click.echo(tool_name)
+
+
+@cli.group(
+    chain=True, help="Configure two models to chat with each other (first is human, second is assistant)."
+)
+@click.option(
+    "--system-message",
+    "-s",
+    nargs=2,
+    default=(
+        "You are playing the role of a human talking to an LLM. Start by asking it a question about a random topic.",
+        "You are an intelligent assistant talking to a human. Answer any questions and engage in conversation.",
+    ),
+    help="The system message for each model.",
+)
+@click.option(
+    "--max-history-tokens",
+    type=int,
+    show_default=True,
+    help="Max chat history tokens to keep.",
+)
+def pipe(*args, **kwargs):
+    pass
+
+
+pipe.add_command(custom)
+
+
+@pipe.result_callback()
+def pipe_results(
+    models: list[BaseChatModel], system_message: tuple[str] | None, max_history_tokens: int | None
+):
+    if len(models) != 2:
+        raise click.UsageError("Must specify exactly two models to pipe chat.")
+    chainpipe(
+        models[0],
+        system_message and system_message[0],
+        models[1],
+        system_message and system_message[1],
+        max_history_tokens,
+    )

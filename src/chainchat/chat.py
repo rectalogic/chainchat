@@ -16,6 +16,7 @@ from langgraph.graph import START, MessagesState, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 
 from .attachment import Attachment, build_message_with_attachments
+from .render import console
 
 if TYPE_CHECKING:
     from langchain_core.prompts.chat import MessageLikeRepresentation
@@ -101,12 +102,12 @@ class Chat:
         prompt: str,
         renderer: Callable[[Iterator[str]], None],
         attachments: tuple[Attachment] | None = None,
-    ):
-        renderer(self.stream(build_message_with_attachments(prompt, attachments)))
+    ) -> str:
+        return renderer(self.stream(build_message_with_attachments(prompt, attachments)))
 
     def chat(self, renderer: Callable[[Iterator[str]], None], attachments: tuple[Attachment] | None = None):
-        click.echo("Chat - Ctrl-D to exit")
-        click.echo("Enter >>> for multiline mode, then <<< to finish")
+        console.print("[green]Chat - Ctrl-D to exit")
+        console.print("[green]Enter >>> for multiline mode, then <<< to finish")
         try:
             while True:
                 prompt = input("> ")
