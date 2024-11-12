@@ -3,7 +3,9 @@
 
 import os
 import re
+from importlib import import_module
 
+import pydantic
 import yaml
 
 
@@ -19,7 +21,27 @@ class EnvVar(yaml.YAMLObject):
             return os.getenv(match.group(1), "")
         return node.value
 
-    yaml_loader.add_implicit_resolver("!env_var", ENV_VAR_RE, "${")
+    yaml_loader.add_implicit_resolver(yaml_tag, ENV_VAR_RE, "${")
+
+
+class PydanticModel(yaml.YAMLObject):
+    yaml_tag = "!pydantic:"
+    yaml_loader = yaml.SafeLoader
+
+    @staticmethod
+    def from_yaml_multi(loader: yaml.Loader, suffix: str, node: yaml.Node):
+        module, classname = suffix.rsplit(".", 1)
+        try:
+            cls = getattr(import_module(module), classname)
+            if isinstance(cls, type) and issubclass(cls, pydantic.BaseModel):
+                mapping = loader.construct_mapping(node)
+                return cls.model_validate(mapping)
+            else:
+                raise yaml.YAMLError(f"{suffix} is not a pydantic.BaseModel")
+        except (ImportError, AttributeError, pydantic.ValidationError) as e:
+            raise yaml.YAMLError(f"Failed to load {suffix}") from e
+
+    yaml_loader.add_multi_constructor(yaml_tag, from_yaml_multi)
 
 
 def load_yaml(filename: str) -> dict:

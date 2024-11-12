@@ -122,14 +122,7 @@ def command_name(module: str, classname: str) -> str:
 
 
 def load_preset_model(name: str, path: str) -> BaseChatModel:
-    model_dict = load_yaml(path).get(name, {})
-    if "class" not in model_dict:
-        raise click.UsageError(f"Model {name} 'class' not found.")
-    module, classname = model_dict["class"].rsplit(".", 1)
-    try:
-        cls = getattr(import_module(module), classname)
-        return cls.model_validate(model_dict.get("args", {}))
-    except (AttributeError, ImportError) as e:
-        raise click.UsageError(f"Model {name} {model_dict["class"]} not found.") from e
-    except ValidationError as e:
-        raise click.UsageError(f"Model {name} {model_dict["class"]} invalid args: {str(e)}.") from e
+    model = load_yaml(path).get(name)
+    if not model:
+        raise click.UsageError(f"Model preset {name} not found.")
+    return model
