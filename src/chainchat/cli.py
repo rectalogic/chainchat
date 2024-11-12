@@ -10,7 +10,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 
 from . import chat
 from .attachment import ATTACHMENT, Attachment, AttachmentType, attachment_type_callback
-from .model import LazyModelGroup, load_custom_model
+from .model import LazyModelGroup, load_preset_model
 from .pipe import chainpipe
 from .render import render_markdown, render_text
 from .tool import create_tools, load_tool_descriptions
@@ -105,7 +105,7 @@ def process_model_results(
         ).chat(process_renderer(markdown), attachment + attachment_type)
 
 
-@chat_.command(help="Load a custom model from YAML.")
+@chat_.command(help="Load a preset model from YAML.")
 @click.option("--name", "-n", default="default", help="Name of the model to load.")
 @click.option(
     "--path",
@@ -113,8 +113,8 @@ def process_model_results(
     help="Path to models yaml file",
     default="./models.yaml",
 )
-def custom(path: str, name: str):
-    return load_custom_model(name, path)
+def preset(path: str, name: str):
+    return load_preset_model(name, path)
 
 
 @cli.command(help="List available tools for tool-calling LLMs.")
@@ -130,15 +130,15 @@ def list_tools(ctx: click.Context, descriptions: bool):
 
 
 @cli.group(
-    chain=True, help="Configure two models to chat with each other (first is human, second is assistant)."
+    chain=True, help="Configure two models to chat with each other (first is user, second is assistant)."
 )
 @click.option(
     "--system-message",
     "-s",
     nargs=2,
     default=(
-        "You are playing the role of a human talking to an LLM. Start by asking it a question about a random topic.",
-        "You are an intelligent assistant talking to a human. Answer any questions and engage in conversation.",
+        "You are playing the role of a user talking to an LLM. Start by asking it a question about a random topic.",
+        "You are an intelligent assistant talking to a user. Answer any questions and engage in conversation.",
     ),
     help="The system message for each model.",
 )
@@ -148,20 +148,25 @@ def list_tools(ctx: click.Context, descriptions: bool):
     show_default=True,
     help="Max chat history tokens to keep.",
 )
+@click.option("--prompt", default="", help="Prompt text to start the conversation.")
 def pipe(*args, **kwargs):
     pass
 
 
-pipe.add_command(custom)
+pipe.add_command(preset)
 
 
 @pipe.result_callback()
 def pipe_results(
-    models: list[BaseChatModel], system_message: tuple[str] | None, max_history_tokens: int | None
+    models: list[BaseChatModel],
+    system_message: tuple[str] | None,
+    max_history_tokens: int | None,
+    prompt: str,
 ):
     if len(models) != 2:
         raise click.UsageError("Must specify exactly two models to pipe chat.")
     chainpipe(
+        prompt,
         models[0],
         system_message and system_message[0],
         models[1],

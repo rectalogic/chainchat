@@ -121,7 +121,7 @@ def command_name(module: str, classname: str) -> str:
     return name
 
 
-def load_custom_model(name: str, path: str) -> BaseChatModel:
+def load_preset_model(name: str, path: str) -> BaseChatModel:
     model_dict = load_yaml(path).get(name, {})
     if "class" not in model_dict:
         raise click.UsageError(f"Model {name} 'class' not found.")

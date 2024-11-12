@@ -1,4 +1,5 @@
 .env
+models.yaml
 
 # Python-generated files
 __pycache__/
