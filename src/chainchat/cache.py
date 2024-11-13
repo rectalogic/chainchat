@@ -55,7 +55,7 @@ def distributions_cached(cursor: sqlite3.Cursor, table: str, distributions: str)
     # https://stackoverflow.com/questions/9755860/valid-query-to-check-if-row-exists-in-sqlite3#9756276
     return (
         cursor.execute(
-            f"SELECT EXISTS(SELECT 1 FROM {table} WHERE distributions = :distributions)",
+            f"SELECT EXISTS(SELECT 1 FROM {table} WHERE distributions = :distributions)",  # noqa: S608
             {"distributions": distributions},
         ).fetchone()[0]
         == 1

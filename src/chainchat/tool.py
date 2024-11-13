@@ -58,9 +58,7 @@ def update_cache(cursor: sqlite3.Cursor, module: str, distributions_key: str):
         for cls in find_package_classes(module, BaseTool)
         if get_tool_attr(cls, "name") is not None
     )
-    cursor.executemany(
-        "INSERT INTO tools VALUES(:distributions, :module, :class, :name, :description)", values
-    )
+    cursor.executemany("INSERT INTO tools VALUES(:distributions, :module, :class, :name, :description)", values)
 
 
 def create_tools(tool_names: tuple[str] | None, tool_discovery: tuple[str, ...]) -> list[BaseTool] | None:

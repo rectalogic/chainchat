@@ -85,9 +85,7 @@ def discover_models() -> dict[str, sqlite3.Row]:
         if package.startswith("langchain_") and package not in ignored_packages
     }
     if "langchain_community" in packages_distributions:
-        packages_distributions["langchain_community.chat_models"] = packages_distributions.pop(
-            "langchain_community"
-        )
+        packages_distributions["langchain_community.chat_models"] = packages_distributions.pop("langchain_community")
 
     distributions_keys: list[str] = []
     with models_execute() as cursor:
@@ -100,7 +98,7 @@ def discover_models() -> dict[str, sqlite3.Row]:
         return {
             command_name(row["module"], row["class"]): row
             for row in cursor.execute(
-                f"SELECT * FROM models WHERE distributions IN ({','.join(['?'] * len(distributions_keys))})",
+                f"SELECT * FROM models WHERE distributions IN ({','.join(['?'] * len(distributions_keys))})",  # noqa: S608
                 distributions_keys,
             ).fetchall()
         }

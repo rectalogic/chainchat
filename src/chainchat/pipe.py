@@ -16,9 +16,7 @@ def chainpipe(
     max_history_tokens: int | None,
 ):
     user = chat.Chat(user_model, system_message=user_message, max_history_tokens=max_history_tokens)
-    assistant = chat.Chat(
-        assistant_model, system_message=assistant_message, max_history_tokens=max_history_tokens
-    )
+    assistant = chat.Chat(assistant_model, system_message=assistant_message, max_history_tokens=max_history_tokens)
 
     if prompt:
         console.print("[green]User:")

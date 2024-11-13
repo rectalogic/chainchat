@@ -13,9 +13,7 @@ def find_packages_distributions() -> Mapping[str, list[str]]:
     return metadata.packages_distributions()
 
 
-def find_package_classes[T](
-    package: str | ModuleType, base_class: type[T]
-) -> Generator[type[T], None, None]:
+def find_package_classes[T](package: str | ModuleType, base_class: type[T]) -> Generator[type[T], None, None]:
     if isinstance(package, ModuleType):
         module = package
     else:

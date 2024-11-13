@@ -74,9 +74,7 @@ class Attachment:
         attachment_type = self.attachment_type
         if attachment_type is AttachmentType.OPENAI:
             if self.resolved_mimetype.startswith("image/"):
-                attachment_type = (
-                    AttachmentType.IMAGE_URL_BASE64 if self.is_local else AttachmentType.IMAGE_URL
-                )
+                attachment_type = AttachmentType.IMAGE_URL_BASE64 if self.is_local else AttachmentType.IMAGE_URL
             elif self.resolved_mimetype.startswith("audio/"):
                 return {
                     "type": "input_audio",

@@ -129,9 +129,7 @@ def list_tools(ctx: click.Context, descriptions: bool):
             click.echo(tool_name)
 
 
-@cli.group(
-    chain=True, help="Configure two models to chat with each other (first is user, second is assistant)."
-)
+@cli.group(chain=True, help="Configure two models to chat with each other (first is user, second is assistant).")
 @click.option(
     "--system-message",
     "-s",

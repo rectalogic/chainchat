@@ -57,8 +57,7 @@ def lazy_load_yaml(filename: str, key: str) -> object:
             if not isinstance(mapping, yaml.MappingNode):
                 raise yaml.YAMLError(f"Expected mapping in {filename}")
             for key_node, value_node in mapping.value:
-                key_value = loader.construct_object(key_node, deep=True)
-                if key_value == key:
+                if key == loader.construct_object(key_node, deep=True):
                     return loader.construct_object(value_node, deep=True)
             raise yaml.YAMLError(f"No such key {key} in {filename}")
         finally:
