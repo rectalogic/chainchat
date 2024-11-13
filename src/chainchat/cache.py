@@ -4,13 +4,13 @@
 import pathlib
 import sqlite3
 from collections.abc import Iterator
-from contextlib import closing, contextmanager
+from contextlib import AbstractContextManager, closing, contextmanager
 from importlib.metadata import version
 
 import platformdirs
 
 
-def cache_path(ensure_exists=False) -> pathlib.Path:
+def cache_path(ensure_exists: bool = False) -> pathlib.Path:
     return platformdirs.user_cache_path("chainchat", "rectalogic", version="1", ensure_exists=ensure_exists)
 
 
@@ -33,7 +33,7 @@ def format_distributions_key(distributions: list[str]) -> str:
     return ",".join(f"{distribution}-{version(distribution)}" for distribution in distributions)
 
 
-def models_execute():
+def models_execute() -> AbstractContextManager[sqlite3.Cursor]:
     return execute(
         """
         CREATE TABLE IF NOT EXISTS models (distributions TEXT, module TEXT, class TEXT);
@@ -42,7 +42,7 @@ def models_execute():
     )
 
 
-def tools_execute():
+def tools_execute() -> AbstractContextManager[sqlite3.Cursor]:
     return execute(
         """
         CREATE TABLE IF NOT EXISTS tools (distributions TEXT, module TEXT, class TEXT, name TEXT, description TEXT);

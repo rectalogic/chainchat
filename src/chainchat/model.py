@@ -4,6 +4,7 @@
 import re
 import sqlite3
 from importlib import import_module
+from typing import Any
 
 import click
 import pydanclick
@@ -28,20 +29,20 @@ OPTION_NAME_RE = re.compile(
 
 
 class LazyModelGroup(click.Group):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self.installed_commands = discover_models()
 
-    def list_commands(self, ctx: click.Context):
+    def list_commands(self, ctx: click.Context) -> list[str]:
         return super().list_commands(ctx) + sorted(self.installed_commands.keys())
 
-    def get_command(self, ctx: click.Context, cmd_name: str):
+    def get_command(self, ctx: click.Context, cmd_name: str) -> click.Command | None:
         if cmd_name in self.installed_commands:
             row = self.installed_commands[cmd_name]
             return self.build_model_command(cmd_name, row["module"], row["class"])
         return super().get_command(ctx, cmd_name)
 
-    def build_model_command(self, cmd_name: str, module: str, classname: str):
+    def build_model_command(self, cmd_name: str, module: str, classname: str) -> click.Command:
         fullname = module + "." + classname
         cls = getattr(import_module(module), classname)
         partial_package = module.split(".")[0].removeprefix("langchain_")
@@ -66,7 +67,7 @@ class LazyModelGroup(click.Group):
             # XXX ignore_unsupported=True
             parse_docstring=False,
         )
-        def command(model: BaseChatModel):
+        def command(model: BaseChatModel) -> BaseChatModel:
             return model
 
         # XXX fix
@@ -104,7 +105,7 @@ def discover_models() -> dict[str, sqlite3.Row]:
         }
 
 
-def update_cache(cursor: sqlite3.Cursor, package: str, distributions_key: str):
+def update_cache(cursor: sqlite3.Cursor, package: str, distributions_key: str) -> None:
     values = (
         {"distributions": distributions_key, "module": cls.__module__, "class": cls.__name__}
         for cls in find_package_classes(package, BaseChatModel)

@@ -46,7 +46,7 @@ def get_tool_attr(cls: type[BaseTool], attr: str) -> str | None:
     return value if not isinstance(value, PydanticUndefinedType) else None
 
 
-def update_cache(cursor: sqlite3.Cursor, module: str, distributions_key: str):
+def update_cache(cursor: sqlite3.Cursor, module: str, distributions_key: str) -> None:
     values = (
         {
             "distributions": distributions_key,

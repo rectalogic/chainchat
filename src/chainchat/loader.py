@@ -15,7 +15,7 @@ class EnvVar(yaml.YAMLObject):
     ENV_VAR_RE = re.compile(r"\$\{([^}]+)\}")
 
     @classmethod
-    def from_yaml(cls, loader: yaml.Loader, node: yaml.Node):
+    def from_yaml(cls, loader: yaml.Loader, node: yaml.Node) -> str:
         match = cls.ENV_VAR_RE.match(node.value)
         if match:
             return os.getenv(match.group(1), "")
@@ -29,11 +29,11 @@ class PydanticModel(yaml.YAMLObject):
     yaml_loader = yaml.SafeLoader
 
     @staticmethod
-    def from_yaml_multi(loader: yaml.Loader, suffix: str, node: yaml.Node):
+    def from_yaml_multi(loader: yaml.Loader, suffix: str, node: yaml.Node) -> pydantic.BaseModel:
         module, classname = suffix.rsplit(".", 1)
         try:
             cls = getattr(import_module(module), classname)
-            if isinstance(cls, type) and issubclass(cls, pydantic.BaseModel):
+            if isinstance(node, yaml.MappingNode) and isinstance(cls, type) and issubclass(cls, pydantic.BaseModel):
                 mapping = loader.construct_mapping(node)
                 return cls.model_validate(mapping)
             else:

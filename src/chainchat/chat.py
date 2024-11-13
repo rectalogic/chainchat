@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import readline  # for input()  # noqa: F401
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Generator, Iterator, Sequence
 from typing import TYPE_CHECKING, Any
 
 import click
@@ -48,10 +48,11 @@ class Chat:
     ):
         if tools:
             tools_list = list(tools)
-            tool_node = ToolNode(tools_list)
-            model = model.bind_tools(tools_list)
+            tools_node = ToolNode(tools_list)
+            tools_model = model.bind_tools(tools_list)
         else:
-            tool_node = None
+            tools_model = None
+            tools_node = None
 
         messages: list[MessageLikeRepresentation] = []
         if system_message is not None:
@@ -69,14 +70,14 @@ class Chat:
                 start_on="human",
                 end_on=("human", "tool"),
             )
-        self.chain = chain | model
+        self.chain = chain | (tools_model or model)
 
         graph = StateGraph(state_schema=MessagesState)
         graph.add_edge(START, "agent")
         graph.add_node("agent", self._run_chain)
-        if tool_node:
+        if tools_node:
             graph.add_conditional_edges("agent", tools_condition)
-            graph.add_node("tools", tool_node)
+            graph.add_node("tools", tools_node)
             graph.add_edge("tools", "agent")
 
         # XXX make checkpointer configurable (memory or sqlite), make thread_id configurable
@@ -85,10 +86,10 @@ class Chat:
             callbacks=[ToolLoggingHandler()],
         )
 
-    def _run_chain(self, state: MessagesState):
+    def _run_chain(self, state: MessagesState) -> MessagesState:
         return {"messages": [self.chain.invoke(state)]}
 
-    def stream(self, messages: Sequence[MessageLikeRepresentation]):
+    def stream(self, messages: Sequence[MessageLikeRepresentation]) -> Generator[str | list[str | dict], Any, None]:
         for chunk, _ in self.graph.stream(
             {"messages": messages},
             # https://langchain-ai.github.io/langgraph/cloud/how-tos/stream_messages
@@ -100,20 +101,20 @@ class Chat:
     def prompt(
         self,
         prompt: str,
-        renderer: Callable[[Iterator[str]], None],
-        attachments: tuple[Attachment] | None = None,
+        renderer: Callable[[Iterator[str]], str],
+        attachments: tuple[Attachment, ...] | None = None,
     ) -> str:
         return renderer(self.stream(build_message_with_attachments(prompt, attachments)))
 
-    def chat(self, renderer: Callable[[Iterator[str]], None], attachments: tuple[Attachment] | None = None):
+    def chat(self, renderer: Callable[[Iterator[str]], str], attachments: tuple[Attachment, ...] | None = None) -> None:
         console.print("[green]Chat - Ctrl-D to exit")
         console.print("[green]Enter >>> for multiline mode, then <<< to finish")
         try:
             while True:
                 prompt = input("> ")
                 if prompt == ">>>":
-                    lines = []
-                    while line := input(". ") != "<<<":
+                    lines: list[str] = []
+                    while (line := input(". ")) != "<<<":
                         lines.append(line)
                     prompt = "\n".join(lines)
 

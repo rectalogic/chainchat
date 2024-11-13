@@ -3,6 +3,7 @@
 
 import os
 from collections.abc import Callable, Iterator
+from typing import Any
 
 import click
 from dotenv import load_dotenv
@@ -16,7 +17,7 @@ from .render import render_markdown, render_text
 from .tool import create_tools, load_tool_descriptions
 
 
-def process_renderer(markdown: bool) -> Callable[[Iterator[str]], None]:
+def process_renderer(markdown: bool) -> Callable[[Iterator[str]], str]:
     return render_markdown if markdown else render_text
 
 
@@ -50,7 +51,7 @@ def cli(
     dotenv: str | None,
     alias_env: tuple[tuple[str, str], ...],
     tool_discovery: tuple[str, ...],
-):
+) -> None:
     load_dotenv(dotenv)
     for alias, env_var in alias_env:
         if env_var in os.environ:
@@ -74,7 +75,7 @@ def cli(
 @click.option("--markdown/--no-markdown", help="Render LLM responses as Markdown.", default=True)
 @click.option("--max-history-tokens", type=int, help="Max chat history tokens to keep.")
 @click.option("--prompt", help="Prompt text to send, if not specified enter interactive chat.")
-def chat_(*args, **kwargs):
+def chat_(*args: Any, **kwargs: Any) -> None:
     pass
 
 
@@ -90,7 +91,7 @@ def process_model_results(
     markdown: bool,
     max_history_tokens: int | None,
     prompt: str | None,
-):
+) -> None:
     tool_discovery = ctx.parent.obj["tool_discovery"]
     if prompt is not None:
         chat.Chat(model, system_message=system_message, tools=create_tools(tool, tool_discovery)).prompt(
@@ -113,14 +114,14 @@ def process_model_results(
     help="Path to models yaml file",
     default="./models.yaml",
 )
-def preset(path: str, name: str):
+def preset(path: str, name: str) -> BaseChatModel:
     return load_preset_model(name, path)
 
 
 @cli.command(help="List available tools for tool-calling LLMs.")
 @click.option("--descriptions/--no-descriptions", default=False, help="Show tool descriptions.")
 @click.pass_context
-def list_tools(ctx: click.Context, descriptions: bool):
+def list_tools(ctx: click.Context, descriptions: bool) -> None:
     tools = load_tool_descriptions(ctx.obj["tool_discovery"])
     for tool_name in sorted(tools.keys()):
         if descriptions:
@@ -147,7 +148,7 @@ def list_tools(ctx: click.Context, descriptions: bool):
     help="Max chat history tokens to keep.",
 )
 @click.option("--prompt", default="", help="Prompt text to start the conversation.")
-def pipe(*args, **kwargs):
+def pipe(*args: Any, **kwargs: Any) -> None:
     pass
 
 
@@ -157,10 +158,10 @@ pipe.add_command(preset)
 @pipe.result_callback()
 def pipe_results(
     models: list[BaseChatModel],
-    system_message: tuple[str] | None,
+    system_message: tuple[str, str] | None,
     max_history_tokens: int | None,
     prompt: str,
-):
+) -> None:
     if len(models) != 2:
         raise click.UsageError("Must specify exactly two models to pipe chat.")
     chainpipe(

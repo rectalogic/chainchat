@@ -6,6 +6,7 @@ from __future__ import annotations
 import base64
 import enum
 import mimetypes
+from collections.abc import Sequence
 from functools import cached_property
 from typing import TYPE_CHECKING, Any
 
@@ -122,24 +123,24 @@ class Attachment:
 class AttachmentParamType(click.ParamType):
     name = "attachment"
 
-    def convert(self, value: Any, param: click.Parameter | None, ctx: click.Context):
+    def convert(self, value: Any, param: click.Parameter | None, ctx: click.Context | None) -> Attachment:
         if isinstance(value, Attachment):
             return value
         return Attachment(value)
 
 
-def attachment_type_callback(ctx: click.Context, param: click.Parameter, values: Any) -> tuple[Attachment]:
+def attachment_type_callback(ctx: click.Context, param: click.Parameter, values: Any) -> tuple[Attachment, ...]:
     try:
         return tuple(Attachment(url, AttachmentType(atype)) for url, atype in values)
     except ValueError as e:
-        click.UsageError(f"Invalid attachment type {str(e)}")
+        raise click.UsageError(f"Invalid attachment type {str(e)}") from e
 
 
 ATTACHMENT = AttachmentParamType()
 
 
 def build_message_with_attachments(
-    prompt: str, attachments: list[Attachment] | None = None
+    prompt: str, attachments: Sequence[Attachment] | None = None
 ) -> MessageLikeRepresentation:
     if not attachments:
         return prompt

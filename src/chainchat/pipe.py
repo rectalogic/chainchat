@@ -14,7 +14,7 @@ def chainpipe(
     assistant_model: BaseChatModel,
     assistant_message: str | None,
     max_history_tokens: int | None,
-):
+) -> None:
     user = chat.Chat(user_model, system_message=user_message, max_history_tokens=max_history_tokens)
     assistant = chat.Chat(assistant_model, system_message=assistant_message, max_history_tokens=max_history_tokens)
 
