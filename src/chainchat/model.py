@@ -7,12 +7,12 @@ from importlib import import_module
 
 import click
 import pydanclick
+import yaml
 from langchain_core.language_models.chat_models import BaseChatModel
-from pydantic import ValidationError
 
 from .cache import distributions_cached, format_distributions_key, models_execute
 from .finder import find_package_classes, find_packages_distributions
-from .loader import load_yaml
+from .loader import lazy_load_yaml
 
 # https://stackoverflow.com/a/1176023/1480205
 OPTION_NAME_RE = re.compile(
@@ -122,7 +122,10 @@ def command_name(module: str, classname: str) -> str:
 
 
 def load_preset_model(name: str, path: str) -> BaseChatModel:
-    model = load_yaml(path).get(name)
-    if not model:
-        raise click.UsageError(f"Model preset {name} not found.")
-    return model
+    try:
+        model = lazy_load_yaml(path, name)
+        if not isinstance(model, BaseChatModel):
+            raise click.UsageError(f"Model preset {name} not langchain_core.BaseChatModel.")
+        return model
+    except yaml.YAMLError as e:
+        raise click.UsageError(f"Could not load preset model {name}: {str(e)}") from e

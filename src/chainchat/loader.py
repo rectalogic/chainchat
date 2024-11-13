@@ -47,3 +47,19 @@ class PydanticModel(yaml.YAMLObject):
 def load_yaml(filename: str) -> dict:
     with open(filename) as f:
         return yaml.safe_load(f)
+
+
+def lazy_load_yaml(filename: str, key: str) -> object:
+    with open(filename) as f:
+        loader = yaml.SafeLoader(f)
+        try:
+            mapping = loader.get_single_node()
+            if not isinstance(mapping, yaml.MappingNode):
+                raise yaml.YAMLError(f"Expected mapping in {filename}")
+            for key_node, value_node in mapping.value:
+                key_value = loader.construct_object(key_node, deep=True)
+                if key_value == key:
+                    return loader.construct_object(value_node, deep=True)
+            raise yaml.YAMLError(f"No such key {key} in {filename}")
+        finally:
+            loader.dispose()
