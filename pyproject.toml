@@ -44,10 +44,12 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
+    "chainchat[openai]",
     "mypy~=1.13.0",
+    "pytest-httpx>=0.33.0",
     "pytest~=8.3.3",
     "ruff~=0.7.1",
-    "types-pyyaml>=6.0.12.20240917",
+    "types-pyyaml~=6.0.12.20240917",
 ]
 
 [tool.ruff]
@@ -79,6 +81,11 @@ select = [
     # pyupgrade
     "UP",
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S", "INP001"]
+
+[tool.pytest.ini_options]
 
 [tool.mypy]
 disallow_untyped_defs = true

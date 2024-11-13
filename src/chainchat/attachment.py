@@ -104,7 +104,7 @@ class Attachment:
                     "source": {
                         "type": "base64",
                         "media_type": self.resolved_mimetype,
-                        "data": self.base64_content,
+                        "data": self.base64_content(),
                     },
                 }
             if self.resolved_mimetype.startswith("application/pdf"):
@@ -113,7 +113,7 @@ class Attachment:
                     "source": {
                         "type": "base64",
                         "media_type": self.resolved_mimetype,
-                        "data": self.base64_content,
+                        "data": self.base64_content(),
                     },
                 }
 

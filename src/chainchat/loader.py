@@ -39,7 +39,7 @@ class PydanticModel(yaml.YAMLObject):
             else:
                 raise yaml.YAMLError(f"{suffix} is not a pydantic.BaseModel")
         except (ImportError, AttributeError, pydantic.ValidationError) as e:
-            raise yaml.YAMLError(f"Failed to load {suffix}") from e
+            raise yaml.YAMLError(f"Failed to load {suffix}: {str(e)}") from e
 
     yaml_loader.add_multi_constructor(yaml_tag, from_yaml_multi)
 
