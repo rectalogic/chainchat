@@ -8,6 +8,8 @@ from importlib import import_module
 import pydantic
 import yaml
 
+from . import trace
+
 
 class EnvVar(yaml.YAMLObject):
     yaml_tag = "!env_var"
@@ -33,8 +35,8 @@ class PydanticModel(yaml.YAMLObject):
         module, classname = suffix.rsplit(".", 1)
         try:
             cls = getattr(import_module(module), classname)
-            if isinstance(node, yaml.MappingNode) and isinstance(cls, type) and issubclass(cls, pydantic.BaseModel):
-                mapping = loader.construct_mapping(node)
+            if isinstance(cls, type) and issubclass(cls, pydantic.BaseModel):
+                mapping = loader.construct_mapping(node) if isinstance(node, yaml.MappingNode) else {}
                 return cls.model_validate(mapping)
             else:
                 raise yaml.YAMLError(f"{suffix} is not a pydantic.BaseModel")
@@ -42,6 +44,15 @@ class PydanticModel(yaml.YAMLObject):
             raise yaml.YAMLError(f"Failed to load {suffix}: {str(e)}") from e
 
     yaml_loader.add_multi_constructor(yaml_tag, from_yaml_multi)
+
+
+class HttpLogClient(yaml.YAMLObject):
+    yaml_tag = "!httplog"
+    yaml_loader = yaml.SafeLoader
+
+    @classmethod
+    def from_yaml(cls, loader: yaml.Loader, node: yaml.Node):
+        return trace.HttpLogClient()
 
 
 def load_yaml(filename: str) -> dict:

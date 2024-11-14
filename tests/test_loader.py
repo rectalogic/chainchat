@@ -7,11 +7,12 @@ import pydantic
 import pytest
 import yaml
 
+from chainchat import trace
 from chainchat.loader import lazy_load_yaml, load_yaml
 
 
 class PersonTestModel(pydantic.BaseModel):
-    name: str
+    name: str = ""
     age: int | None = None
     count: ClassVar[int] = 0
 
@@ -32,6 +33,7 @@ def test_lazy_load_yaml_pydantic(tmp_path):
     person2: !pydantic:{classname}
       name: Jane Roe
       age: 26
+    person3: !pydantic:{classname}
     """
     yaml_file.write_text(yaml_content)
 
@@ -43,6 +45,20 @@ def test_lazy_load_yaml_pydantic(tmp_path):
     person = lazy_load_yaml(str(yaml_file), "person2")
     assert PersonTestModel.count == 2
     assert person.model_dump() == {"name": "Jane Roe", "age": 26}
+
+    person = lazy_load_yaml(str(yaml_file), "person3")
+    assert PersonTestModel.count == 3
+    assert person.model_dump() == {"name": "", "age": None}
+
+
+def test_load_httplog(tmp_path):
+    yaml_file = tmp_path / "test.yaml"
+    yaml_content = """
+    http: !httplog
+    """
+    yaml_file.write_text(yaml_content)
+    d = load_yaml(str(yaml_file))
+    assert isinstance(d["http"], trace.HttpLogClient)
 
 
 def test_env_var(monkeypatch, tmp_path):

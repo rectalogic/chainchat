@@ -1,5 +1,8 @@
 #XXX this loads all the models when we load yaml, how can we lazy load?
 
+log-openai: !pydantic:langchain_openai.ChatOpenAI
+  model_name: gpt-4o-mini
+  http_client: !httplog
 xai: !pydantic:langchain_openai.ChatOpenAI
   model_name: grok-beta
   openai_api_base: https://api.x.ai/v1
