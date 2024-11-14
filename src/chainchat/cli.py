@@ -25,7 +25,7 @@ def process_renderer(markdown: bool) -> Callable[[Iterator[str]], str]:
 @click.option(
     "--dotenv",
     "-e",
-    type=click.Path(exists=True, dir_okay=False),
+    type=click.Path(dir_okay=False),
     default=".env",
     help="Load environment variables (API keys) from a .env file.",
 )

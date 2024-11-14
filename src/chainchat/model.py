@@ -3,8 +3,8 @@
 
 import re
 import sqlite3
+from functools import cached_property
 from importlib import import_module
-from typing import Any
 
 import click
 import pydanclick
@@ -29,9 +29,9 @@ OPTION_NAME_RE = re.compile(
 
 
 class LazyModelGroup(click.Group):
-    def __init__(self, *args: Any, **kwargs: Any):
-        super().__init__(*args, **kwargs)
-        self.installed_commands = discover_models()
+    @cached_property
+    def installed_commands(self) -> dict[str, sqlite3.Row]:
+        return discover_models()
 
     def list_commands(self, ctx: click.Context) -> list[str]:
         return super().list_commands(ctx) + sorted(self.installed_commands.keys())

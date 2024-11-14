@@ -12,7 +12,7 @@ import httpx
 class LogResponse(httpx.Response):
     def iter_bytes(self, *args, **kwargs):
         for chunk in super().iter_bytes(*args, **kwargs):
-            print(chunk, file=sys.stderr)
+            sys.stderr.buffer.write(chunk + b"\x00")
             yield chunk
 
 

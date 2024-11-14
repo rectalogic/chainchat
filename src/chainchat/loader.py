@@ -37,7 +37,7 @@ class PydanticModel(yaml.YAMLObject):
             cls = getattr(import_module(module), classname)
             if isinstance(cls, type) and issubclass(cls, pydantic.BaseModel):
                 mapping = loader.construct_mapping(node) if isinstance(node, yaml.MappingNode) else {}
-                return cls.model_validate(mapping)
+                return cls.model_validate(mapping, strict=True)
             else:
                 raise yaml.YAMLError(f"{suffix} is not a pydantic.BaseModel")
         except (ImportError, AttributeError, pydantic.ValidationError) as e:
