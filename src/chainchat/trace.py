@@ -22,6 +22,7 @@ class LogTransport(httpx.BaseTransport):
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         print(f"Request: {request.method} {request.url}", file=sys.stderr)
+        print(f"Content: {request.content}", file=sys.stderr)
         response = self.transport.handle_request(request)
         print(f"Response: {response.status_code}", file=sys.stderr)
 

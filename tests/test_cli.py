@@ -3,6 +3,7 @@
 
 import os
 import pathlib
+from unittest import mock
 
 from click.testing import CliRunner
 from pytest_httpx import IteratorStream
@@ -25,12 +26,13 @@ def stream_events(fixture):
             yield bytes(chunk)
 
 
-def mock_openai(httpx_mock, fixture):
+def mock_openai(httpx_mock, fixture, match_json=None):
     httpx_mock.add_response(
         method="POST",
         url="https://api.openai.com/v1/chat/completions",
         stream=IteratorStream(stream_events(fixture)),
         headers={"Content-Type": "text/event-stream"},
+        match_json=match_json,
     )
 
 
@@ -70,12 +72,32 @@ def test_prompt(tmp_path, cache_dir, httpx_mock):
 
 
 def test_prompt_with_tool(cache_dir, tmp_path, httpx_mock):
+    file_contents = "This is a test file."
     mock_openai(httpx_mock, "gpt-4o-mini-tool1.dat")
-    mock_openai(httpx_mock, "gpt-4o-mini-tool2.dat")
+    mock_openai(
+        httpx_mock,
+        "gpt-4o-mini-tool2.dat",
+        match_json={
+            "messages": [
+                mock.ANY,
+                mock.ANY,
+                {
+                    "content": file_contents,
+                    "role": "tool",
+                    "tool_call_id": mock.ANY,
+                },
+            ],
+            "model": "gpt-4o-mini",
+            "n": 1,
+            "stream": True,
+            "temperature": mock.ANY,
+            "tools": mock.ANY,
+        },
+    )
     runner = CliRunner(mix_stderr=False)
     with runner.isolated_filesystem(temp_dir=tmp_path):
         with open("simple.txt", "w") as f:
-            f.write("This is a test file.")
+            f.write(file_contents)
         result = runner.invoke(
             cli.cli,
             [
