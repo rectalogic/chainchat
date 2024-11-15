@@ -34,6 +34,9 @@ google = ["langchain-google-genai~=2.0.4"]
 groq = [
     "langchain-groq~=0.2.1",
 ]
+huggingface = [
+    "langchain-huggingface~=0.1.2",
+]
 
 [project.scripts]
 chainchat = "chainchat.cli:cli"

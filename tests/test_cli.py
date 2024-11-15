@@ -115,3 +115,22 @@ def test_prompt_with_tool(cache_dir, tmp_path, httpx_mock):
         )
         assert result.exit_code == 0
         assert result.output == 'The file contains a simple statement: "This is a test file."'
+
+
+def test_list_tools(cache_dir, tmp_path):
+    assert not (cache_dir / "chainchat.db").exists()
+    runner = CliRunner(mix_stderr=False)
+    with runner.isolated_filesystem(temp_dir=tmp_path):
+        result = runner.invoke(cli.cli, ["list-tools"])
+        assert result.exit_code == 0
+        assert "read_file" in result.output
+
+        assert (cache_dir / "chainchat.db").exists()
+        with cache.tools_execute() as cursor:
+            assert (
+                cursor.execute(
+                    "SELECT count(*) FROM tools WHERE name = :name",
+                    {"name": "read_file"},
+                ).fetchone()[0]
+                == 1
+            )

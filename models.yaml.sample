@@ -1,8 +1,8 @@
-#XXX this loads all the models when we load yaml, how can we lazy load?
-
 log-openai: !pydantic:langchain_openai.ChatOpenAI
   model_name: gpt-4o-mini
   http_client: !httplog
+gpt-4o-mini: !pydantic:langchain_openai.ChatOpenAI
+  model_name: gpt-4o-mini
 xai: !pydantic:langchain_openai.ChatOpenAI
   model_name: grok-beta
   openai_api_base: https://api.x.ai/v1
@@ -11,7 +11,7 @@ groq: !pydantic:langchain_groq.ChatGroq
   model_name: llama-3.1-8b-instant
 gemini: !pydantic:langchain_google_genai.ChatGoogleGenerativeAI
   model: gemini-1.5-pro-001
-hf-deepseek: !pydantic:langchain_huggingface.ChatHuggingFace
+hf: !pydantic:langchain_huggingface.ChatHuggingFace
   llm: !pydantic:langchain_huggingface.HuggingFaceEndpoint
-    repo_id: deepseek-ai/DeepSeek-Coder-V2-Instruct
+    repo_id: HuggingFaceH4/zephyr-7b-beta
     task: text-generation
