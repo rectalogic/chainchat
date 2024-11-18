@@ -2,16 +2,20 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 from __future__ import annotations
 
+import pathlib
 import readline  # for input()  # noqa: F401
+import sqlite3
 from collections.abc import Callable, Generator, Iterator, Sequence
 from typing import TYPE_CHECKING, Any
 
 import click
+import platformdirs
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, trim_messages
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import START, MessagesState, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 
@@ -21,6 +25,10 @@ from .render import console
 if TYPE_CHECKING:
     from langchain_core.prompts.chat import MessageLikeRepresentation
     from langchain_core.tools import BaseTool
+
+
+def checkpointer_path(ensure_exists: bool = False) -> pathlib.Path:
+    return platformdirs.user_data_path("chainchat", "rectalogic", ensure_exists=ensure_exists) / "checkpoint.db"
 
 
 class ToolLoggingHandler(BaseCallbackHandler):
@@ -45,6 +53,7 @@ class Chat:
         system_message: str | None = None,
         tools: Sequence[BaseTool] | None = None,
         max_history_tokens: int | None = None,
+        conversation_id: str | None = None,
     ):
         if tools:
             tools_list = list(tools)
@@ -80,9 +89,14 @@ class Chat:
             graph.add_node("tools", tools_node)
             graph.add_edge("tools", "agent")
 
-        # XXX make checkpointer configurable (memory or sqlite), make thread_id configurable
-        self.graph = graph.compile(checkpointer=MemorySaver()).with_config(
-            {"configurable": {"thread_id": "1"}},
+        if conversation_id is not None:
+            # https://ricardoanderegg.com/posts/python-sqlite-thread-safety/
+            connection = sqlite3.connect(checkpointer_path(True), check_same_thread=sqlite3.threadsafety != 3)
+            checkpointer = SqliteSaver(connection)
+        else:
+            checkpointer = MemorySaver()
+        self.graph = graph.compile(checkpointer=checkpointer).with_config(
+            {"configurable": {"thread_id": conversation_id or "1"}},
             callbacks=[ToolLoggingHandler()],
         )
 

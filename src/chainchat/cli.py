@@ -75,6 +75,7 @@ def cli(
 @click.option("--markdown/--no-markdown", help="Render LLM responses as Markdown.", default=True)
 @click.option("--max-history-tokens", type=int, help="Max chat history tokens to keep.")
 @click.option("--prompt", help="Prompt text to send, if not specified enter interactive chat.")
+@click.option("--conversation-id", help="Persist conversation using id")
 def chat_(*args: Any, **kwargs: Any) -> None:
     pass
 
@@ -91,18 +92,23 @@ def process_model_results(
     markdown: bool,
     max_history_tokens: int | None,
     prompt: str | None,
+    conversation_id: str | None,
 ) -> None:
     tool_discovery = ctx.parent.obj["tool_discovery"]
     if prompt is not None:
-        chat.Chat(model, system_message=system_message, tools=create_tools(tool, tool_discovery)).prompt(
-            prompt, process_renderer(markdown), attachment + attachment_type
-        )
+        chat.Chat(
+            model,
+            system_message=system_message,
+            tools=create_tools(tool, tool_discovery),
+            conversation_id=conversation_id,
+        ).prompt(prompt, process_renderer(markdown), attachment + attachment_type)
     else:
         chat.Chat(
             model,
             system_message=system_message,
             tools=create_tools(tool, tool_discovery),
             max_history_tokens=max_history_tokens,
+            conversation_id=conversation_id,
         ).chat(process_renderer(markdown), attachment + attachment_type)
 
 

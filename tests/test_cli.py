@@ -36,8 +36,8 @@ def mock_openai(httpx_mock, fixture, match_json=None):
     )
 
 
-def test_prompt(tmp_path, cache_dir, httpx_mock):
-    assert not (cache_dir / "chainchat.db").exists()
+def test_prompt(tmp_path, mock_platformdirs, httpx_mock):
+    assert not (mock_platformdirs / "chainchat.db").exists()
     mock_openai(httpx_mock, "gpt-4o-mini-cutoff.dat")
     runner = CliRunner(mix_stderr=False)
     assert "OPENAI_API_KEY" not in os.environ
@@ -60,7 +60,7 @@ def test_prompt(tmp_path, cache_dir, httpx_mock):
         assert result.exit_code == 0
         assert result.output == "My knowledge cutoff date is October 2021."
 
-        assert (cache_dir / "chainchat.db").exists()
+        assert (mock_platformdirs / "chainchat.db").exists()
         with cache.models_execute() as cursor:
             assert (
                 cursor.execute(
@@ -71,7 +71,7 @@ def test_prompt(tmp_path, cache_dir, httpx_mock):
             )
 
 
-def test_prompt_with_tool(cache_dir, tmp_path, httpx_mock):
+def test_prompt_with_tool(mock_platformdirs, tmp_path, httpx_mock):
     file_contents = "This is a test file."
     mock_openai(httpx_mock, "gpt-4o-mini-tool1.dat")
     mock_openai(
@@ -117,15 +117,15 @@ def test_prompt_with_tool(cache_dir, tmp_path, httpx_mock):
         assert result.output == 'The file contains a simple statement: "This is a test file."'
 
 
-def test_list_tools(cache_dir, tmp_path):
-    assert not (cache_dir / "chainchat.db").exists()
+def test_list_tools(mock_platformdirs, tmp_path):
+    assert not (mock_platformdirs / "chainchat.db").exists()
     runner = CliRunner(mix_stderr=False)
     with runner.isolated_filesystem(temp_dir=tmp_path):
         result = runner.invoke(cli.cli, ["list-tools"])
         assert result.exit_code == 0
         assert "read_file" in result.output
 
-        assert (cache_dir / "chainchat.db").exists()
+        assert (mock_platformdirs / "chainchat.db").exists()
         with cache.tools_execute() as cursor:
             assert (
                 cursor.execute(
