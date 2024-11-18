@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 from __future__ import annotations
 
+import enum
 import pathlib
 import readline  # for input()  # noqa: F401
 import sqlite3
@@ -12,19 +13,28 @@ import click
 import platformdirs
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessage, trim_messages
+from langchain_core.messages import AIMessage, HumanMessage, trim_messages
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import START, MessagesState, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
+from rich.markdown import Markdown
 
-from .attachment import Attachment, build_message_with_attachments
+from .attachment import Attachment, AttachmentType, build_message_with_attachments
 from .render import console
 
 if TYPE_CHECKING:
     from langchain_core.prompts.chat import MessageLikeRepresentation
     from langchain_core.tools import BaseTool
+
+
+class Command(enum.StrEnum):
+    MULTI = "!multi"
+    ATTACH = "!attach"
+    HISTORY = "!history"
+    HELP = "!help"
+    QUIT = "!quit"
 
 
 def checkpointer_path(ensure_exists: bool = False) -> pathlib.Path:
@@ -116,23 +126,63 @@ class Chat:
         self,
         prompt: str,
         renderer: Callable[[Iterator[str]], str],
-        attachments: tuple[Attachment, ...] | None = None,
+        attachments: Sequence[Attachment] | None = None,
     ) -> str:
         return renderer(self.stream(build_message_with_attachments(prompt, attachments)))
 
-    def chat(self, renderer: Callable[[Iterator[str]], str], attachments: tuple[Attachment, ...] | None = None) -> None:
-        console.print("[green]Chat - Ctrl-D to exit")
-        console.print("[green]Enter >>> for multiline mode, then <<< to finish")
+    def chat(self, renderer: Callable[[Iterator[str]], str], attachments: Sequence[Attachment] | None = None) -> None:
+        console.print(f"[green]Chat - Ctrl-D or {Command.QUIT} to quit")
+        console.print(f"[green]Enter {Command.MULTI} to enter/exit multiline mode, {Command.HELP} for more commands")
+
+        attachments: list[Attachment] = list(attachments) or []
+
         try:
             while True:
                 prompt = input("> ")
-                if prompt == ">>>":
+
+                if prompt == Command.QUIT:
+                    return
+                elif prompt == Command.HELP:
+                    console.print(f"[yellow]{Command.MULTI} - enter multiline mode, enter again to exit")
+                    console.print(f"[yellow]{Command.ATTACH} - add an attachment to the current prompt")
+                    console.print(f"[yellow]{Command.HISTORY} - show chat conversation history")
+                    console.print(f"[yellow]{Command.HELP} - this message")
+                    console.print(f"[yellow]{Command.QUIT} - quit (also Ctrl-D)")
+                    continue
+                elif prompt == Command.ATTACH:
+                    url = input("url/path>> ")
+                    types = ", ".join(AttachmentType)
+                    atype = input(f"{types} [{AttachmentType.IMAGE_URL}]>> ") or AttachmentType.IMAGE_URL
+                    try:
+                        attachments.append(Attachment(url, AttachmentType(atype)))
+                    except ValueError:
+                        console.print(f"[red]Invalid attachment type: {atype}")
+                    continue
+                elif prompt == Command.HISTORY:
+                    state = self.graph.get_state({"configurable": self.graph.config.get("configurable")})
+                    if "messages" in state.values:
+                        for message in state.values["messages"]:
+                            if isinstance(message, HumanMessage):
+                                console.print(f"> {message.content}")
+                            elif isinstance(message, AIMessage):
+                                console.print(Markdown(message.content))
+                    continue
+                elif prompt == Command.MULTI:
                     lines: list[str] = []
-                    while (line := input(". ")) != "<<<":
+                    while (line := input(". ")) != Command.MULTI:
+                        if line in Command:
+                            console.print(
+                                f"[red]Commands not accept in multiline mode, enter {Command.MULTI} to exit multiline"
+                            )
+                            continue
                         lines.append(line)
                     prompt = "\n".join(lines)
 
-                self.prompt(prompt, renderer, attachments)
-                attachments = None
+                try:
+                    self.prompt(prompt, renderer, attachments)
+                except Exception as e:
+                    console.print(f"[red]Error: {str(e)[:2048]}")
+
+                attachments = []
         except EOFError:
             return

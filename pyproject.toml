@@ -1,7 +1,7 @@
 [project]
 name = "chainchat"
-version = "0.1.0"
-description = "Add your description here"
+version = "0.1.a1"
+description = "Chat with LangChain LLM models, with tool calling and multimodal support"
 readme = "README.md"
 authors = [
     { name = "Andrew Wason", email = "rectalogic@rectalogic.com" }
@@ -17,7 +17,7 @@ dependencies = [
     "pydanclick~=0.3.0",
     "platformdirs~=4.3.6",
     "pyyaml~=6.0.2",
-    "langgraph-checkpoint-sqlite>=2.0.1",
+    "langgraph-checkpoint-sqlite~=2.0.1",
 ]
 classifiers = [
     "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
@@ -50,7 +50,7 @@ build-backend = "hatchling.build"
 dev = [
     "chainchat[openai,tools]",
     "mypy~=1.13.0",
-    "pytest-httpx>=0.33.0",
+    "pytest-httpx~=0.33.0",
     "pytest~=8.3.3",
     "ruff~=0.7.1",
     "types-pyyaml~=6.0.12.20240917",

@@ -155,7 +155,7 @@ wheels = [
 
 [[package]]
 name = "chainchat"
-version = "0.1.0"
+version = "0.1a1"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
@@ -213,7 +213,7 @@ requires-dist = [
     { name = "langchain-huggingface", marker = "extra == 'huggingface'", specifier = "~=0.1.2" },
     { name = "langchain-openai", marker = "extra == 'openai'", specifier = "~=0.2.5" },
     { name = "langgraph", specifier = "~=0.2.39" },
-    { name = "langgraph-checkpoint-sqlite", specifier = ">=2.0.1" },
+    { name = "langgraph-checkpoint-sqlite", specifier = "~=2.0.1" },
     { name = "platformdirs", specifier = "~=4.3.6" },
     { name = "pydanclick", specifier = "~=0.3.0" },
     { name = "python-dotenv", specifier = "~=1.0.1" },
@@ -226,7 +226,7 @@ dev = [
     { name = "chainchat", extras = ["openai", "tools"] },
     { name = "mypy", specifier = "~=1.13.0" },
     { name = "pytest", specifier = "~=8.3.3" },
-    { name = "pytest-httpx", specifier = ">=0.33.0" },
+    { name = "pytest-httpx", specifier = "~=0.33.0" },
     { name = "ruff", specifier = "~=0.7.1" },
     { name = "types-pyyaml", specifier = "~=6.0.12.20240917" },
 ]
