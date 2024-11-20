@@ -4,6 +4,7 @@
 import os
 import re
 from importlib import import_module
+from typing import TypeGuard
 
 import pydantic
 import yaml
@@ -26,22 +27,47 @@ class EnvVar(yaml.YAMLObject):
     yaml_loader.add_implicit_resolver(yaml_tag, ENV_VAR_RE, "${")
 
 
+class SafeClassLoader(yaml.SafeLoader):
+    pass
+
+
+def parse_pydantic_classname(name: str) -> TypeGuard[type[pydantic.BaseModel] | None]:
+    try:
+        module, classname = name.rsplit(".", 1)
+        cls = getattr(import_module(module), classname)
+        if isinstance(cls, type) and issubclass(cls, pydantic.BaseModel):
+            return cls
+        return None
+    except (ValueError, ImportError, AttributeError):
+        return None
+
+
 class PydanticModel(yaml.YAMLObject):
     yaml_tag = "!pydantic:"
     yaml_loader = yaml.SafeLoader
 
     @staticmethod
     def from_yaml_multi(loader: yaml.Loader, suffix: str, node: yaml.Node) -> pydantic.BaseModel:
-        module, classname = suffix.rsplit(".", 1)
         try:
-            cls = getattr(import_module(module), classname)
-            if isinstance(cls, type) and issubclass(cls, pydantic.BaseModel):
+            cls = parse_pydantic_classname(suffix)
+            if cls:
                 mapping = loader.construct_mapping(node) if isinstance(node, yaml.MappingNode) else {}
                 return cls.model_validate(mapping, strict=True)
             else:
                 raise yaml.YAMLError(f"{suffix} is not a pydantic.BaseModel")
-        except (ImportError, AttributeError, pydantic.ValidationError) as e:
+        except pydantic.ValidationError as e:
             raise yaml.YAMLError(f"Failed to load {suffix}: {str(e)}") from e
+
+    yaml_loader.add_multi_constructor(yaml_tag, from_yaml_multi)
+
+
+class PydanticModelClass(yaml.YAMLObject):
+    yaml_tag = "!pydantic:"
+    yaml_loader = SafeClassLoader
+
+    @staticmethod
+    def from_yaml_multi(loader: yaml.Loader, suffix: str, node: yaml.Node) -> type[pydantic.BaseModel] | None:
+        return parse_pydantic_classname(suffix)
 
     yaml_loader.add_multi_constructor(yaml_tag, from_yaml_multi)
 
@@ -55,9 +81,18 @@ class HttpLogClient(yaml.YAMLObject):
         return trace.HttpLogClient()
 
 
-def load_yaml(filename: str) -> dict:
+class HttpLogClientNoop(yaml.YAMLObject):
+    yaml_tag = "!httplog"
+    yaml_loader = SafeClassLoader
+
+    @classmethod
+    def from_yaml(cls, loader: yaml.Loader, node: yaml.Node):
+        return None
+
+
+def load_yaml(filename: str, loader: yaml.Loader = yaml.SafeLoader) -> dict:
     with open(filename) as f:
-        return yaml.safe_load(f)
+        return yaml.load(f, loader)  # noqa: S506
 
 
 def lazy_load_yaml(filename: str, key: str) -> object:
