@@ -11,7 +11,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 
 from . import chat
 from .attachment import ATTACHMENT, Attachment, AttachmentType, attachment_type_callback
-from .model import LazyModelGroup, load_preset_model
+from .model import LazyModelGroup
 from .pipe import chainpipe
 from .render import render_markdown, render_text
 from .tool import create_tools, load_tool_descriptions
@@ -44,6 +44,13 @@ def process_renderer(markdown: bool) -> Callable[[Iterator[str]], str]:
     help="Packages to scan for tools (BaseTool implementations).",
     multiple=True,
 )
+@click.option(
+    "--model-presets",
+    type=click.Path(dir_okay=False),
+    help="Path to models presets yaml file",
+    show_default=True,
+    default="./models.yaml",
+)
 @click.version_option()
 @click.pass_context
 def cli(
@@ -51,6 +58,7 @@ def cli(
     dotenv: str | None,
     alias_env: tuple[tuple[str, str], ...],
     tool_discovery: tuple[str, ...],
+    model_presets: str,
 ) -> None:
     load_dotenv(dotenv)
     for alias, env_var in alias_env:
@@ -58,6 +66,7 @@ def cli(
             os.environ[alias] = os.environ[env_var]
     ctx.ensure_object(dict)
     ctx.obj["tool_discovery"] = tool_discovery
+    ctx.obj["model_presets"] = model_presets
 
 
 @cli.group("chat", cls=LazyModelGroup)
@@ -112,18 +121,6 @@ def process_model_results(
         ).chat(process_renderer(markdown), attachment + attachment_type)
 
 
-@chat_.command(help="Load a preset model from YAML.")
-@click.option("--name", "-n", default="default", help="Name of the model to load.")
-@click.option(
-    "--path",
-    type=click.Path(exists=True, dir_okay=False),
-    help="Path to models yaml file",
-    default="./models.yaml",
-)
-def preset(path: str, name: str) -> BaseChatModel:
-    return load_preset_model(name, path)
-
-
 @cli.command(help="List available tools for tool-calling LLMs.")
 @click.option("--descriptions/--no-descriptions", default=False, help="Show tool descriptions.")
 @click.pass_context
@@ -136,7 +133,11 @@ def list_tools(ctx: click.Context, descriptions: bool) -> None:
             click.echo(tool_name)
 
 
-@cli.group(chain=True, help="Configure two models to chat with each other (first is user, second is assistant).")
+@cli.group(
+    cls=LazyModelGroup,
+    chain=True,
+    help="Configure two models to chat with each other (first is user, second is assistant).",
+)
 @click.option(
     "--system-message",
     "-s",
@@ -156,9 +157,6 @@ def list_tools(ctx: click.Context, descriptions: bool) -> None:
 @click.option("--prompt", default="", help="Prompt text to start the conversation.")
 def pipe(*args: Any, **kwargs: Any) -> None:
     pass
-
-
-pipe.add_command(preset)
 
 
 @pipe.result_callback()

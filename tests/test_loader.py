@@ -6,65 +6,69 @@ from typing import ClassVar
 import pydantic
 import pytest
 import yaml
+from langchain_core.language_models.chat_models import BaseChatModel
 
 from chainchat import trace
-from chainchat.loader import SafeClassLoader, lazy_load_yaml, load_yaml
+from chainchat.loader import SafeClassNameLoader, lazy_load_yaml, load_yaml
 
 
 class PersonTestModel(pydantic.BaseModel):
     name: str = ""
     age: int | None = None
-    count: ClassVar[int] = 0
-
-    def __init__(self, *args, **kwargs):
-        PersonTestModel.count += 1
-        super().__init__(*args, **kwargs)
+    model_config = pydantic.ConfigDict(extra="forbid")
 
 
-classname = f"{PersonTestModel.__module__}.{PersonTestModel.__name__}"
+class BaseTestChatModel(BaseChatModel):
+    person: PersonTestModel | None = None
+
+    def _generate(self, *args, **kwargs):
+        return None
+
+    @property
+    def _llm_type(self):
+        return "test-chat"
 
 
 @pytest.fixture
 def sample_yaml(tmp_path):
     yaml_file = tmp_path / "test.yaml"
-    yaml_content = f"""
-    person1: !pydantic:{classname}
-      name: John Doe
-      age: 30
-    person2: !pydantic:{classname}
-      name: Jane Roe
-      age: 26
-    person3: !pydantic:{classname}
-    person4: !pydantic:bad.module.Classname
+    yaml_content = """
+    model1: !pydantic:tests.test_loader.BaseTestChatModel
+      temperature: 0.2
+      disable_streaming: True
+    model2: !pydantic:tests.test_loader.BaseTestChatModel
+      person: !pydantic:tests.test_loader.PersonTestModel
+        name: Joe
+    model3: !pydantic:tests.test_loader.BaseTestChatModel
+    model4: !pydantic:bad.module.Classname
     """
     yaml_file.write_text(yaml_content)
     yield yaml_file
 
 
 def test_lazy_load_yaml_pydantic(sample_yaml):
-    PersonTestModel.count = 0
     # Lazy load a specific key
-    person = lazy_load_yaml(str(sample_yaml), "person1")
-    assert PersonTestModel.count == 1
-    assert person.model_dump() == {"name": "John Doe", "age": 30}
+    model = lazy_load_yaml(str(sample_yaml), "model1")
+    assert model == {"class": BaseTestChatModel, "kwargs": {"temperature": 0.2, "disable_streaming": True}}
 
-    person = lazy_load_yaml(str(sample_yaml), "person2")
-    assert PersonTestModel.count == 2
-    assert person.model_dump() == {"name": "Jane Roe", "age": 26}
+    model = lazy_load_yaml(str(sample_yaml), "model2")
+    assert model == {"class": BaseTestChatModel, "kwargs": {"person": PersonTestModel(name="Joe")}}
 
-    person = lazy_load_yaml(str(sample_yaml), "person3")
-    assert PersonTestModel.count == 3
-    assert person.model_dump() == {"name": "", "age": None}
+    model = lazy_load_yaml(str(sample_yaml), "model3")
+    assert model == {"class": BaseTestChatModel, "kwargs": {}}
+
+    with pytest.raises(yaml.YAMLError):
+        lazy_load_yaml(str(sample_yaml), "model4")
 
 
-def test_load_yaml_pydantic_class(sample_yaml):
-    PersonTestModel.count = 0
-    models = load_yaml(str(sample_yaml), SafeClassLoader)
-    assert PersonTestModel.count == 0
-    assert issubclass(models["person1"], pydantic.BaseModel)
-    assert issubclass(models["person2"], pydantic.BaseModel)
-    assert issubclass(models["person3"], pydantic.BaseModel)
-    assert models["person4"] is None
+def test_load_yaml_pydantic_classname(sample_yaml):
+    models = load_yaml(str(sample_yaml), SafeClassNameLoader)
+    assert models == {
+        "model1": ("tests.test_loader", "BaseTestChatModel"),
+        "model2": ("tests.test_loader", "BaseTestChatModel"),
+        "model3": ("tests.test_loader", "BaseTestChatModel"),
+        "model4": ("bad.module", "Classname"),
+    }
 
 
 def test_load_httplog(tmp_path):
@@ -77,7 +81,7 @@ def test_load_httplog(tmp_path):
     d = load_yaml(str(yaml_file))
     assert isinstance(d["http"], trace.HttpLogClient)
 
-    d = load_yaml(str(yaml_file), SafeClassLoader)
+    d = load_yaml(str(yaml_file), SafeClassNameLoader)
     assert d["http"] is None
 
 
@@ -98,12 +102,14 @@ def test_env_var(monkeypatch, tmp_path):
     assert load_yaml(str(yaml_file)) == {"config": {"setting1": "hello world"}, "other": {"setting2": "value2"}}
 
 
-def test_pydantic_model_validation_error():
+def test_pydantic_model_validation_error(tmp_path):
     # Test Pydantic validation error
-    invalid_yaml_content = f"""
-    person: !pydantic:{classname}
-      name: 123  # Invalid type
+    yaml_file = tmp_path / "test.yaml"
+    invalid_yaml_content = """
+    model: !pydantic:tests.test_loader.PersonTestModel
+      foobar: 123  # Invalid type
     """
+    yaml_file.write_text(invalid_yaml_content)
 
     with pytest.raises(yaml.YAMLError):
-        yaml.safe_load(invalid_yaml_content)
+        load_yaml(str(yaml_file))
