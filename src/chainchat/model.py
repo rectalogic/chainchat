@@ -1,14 +1,12 @@
 # Copyright (C) 2024 Andrew Wason
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-import pathlib
 import re
 import sqlite3
 from functools import cache, cached_property
 
 import click
 import pydanclick
-import yaml
 from langchain_core.language_models.chat_models import BaseChatModel
 from pydanclick.command import add_options
 from pydanclick.model import convert_to_click
@@ -37,7 +35,7 @@ class LazyModelGroup(click.Group):
     def discovered_commands(self) -> dict[str, tuple[str, str]]:
         return discover_models()
 
-    @cache
+    @cache  # noqa: B019
     def preset_commands(self, model_presets: str | None) -> dict[str, tuple[str, str]]:
         return {
             f"{PRESET_PREFIX}{k}": v
@@ -131,8 +129,12 @@ class LazyModelGroup(click.Group):
             help=f"Model preset {fullname}",
         )
         @add_options(options)
-        def command(**kwargs) -> BaseChatModel:
-            return validate(model_info.get("kwargs", {}) | kwargs)
+        @click.pass_context
+        def command(ctx: click.Context, **kwargs) -> BaseChatModel:
+            specified_kwargs = {
+                k: v for k, v in kwargs.items() if ctx.get_parameter_source(k) is not click.core.ParameterSource.DEFAULT
+            }
+            return validate(model_info.get("kwargs", {}) | specified_kwargs)
 
         # XXX fix
         # for p in command.params:
