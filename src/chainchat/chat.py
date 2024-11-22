@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 import enum
-import pathlib
 import readline  # for input()  # noqa: F401
 import sqlite3
 from collections.abc import Callable, Generator, Iterator, Sequence
 from typing import TYPE_CHECKING, Any
 
 import click
-import platformdirs
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, trim_messages
@@ -22,6 +20,7 @@ from langgraph.prebuilt import ToolNode, tools_condition
 from rich.markdown import Markdown
 
 from .attachment import Attachment, AttachmentType, build_message_with_attachments
+from .conversation import checkpointer_path
 from .render import console
 
 if TYPE_CHECKING:
@@ -35,10 +34,6 @@ class Command(enum.StrEnum):
     HISTORY = "!history"
     HELP = "!help"
     QUIT = "!quit"
-
-
-def checkpointer_path(ensure_exists: bool = False) -> pathlib.Path:
-    return platformdirs.user_data_path("chainchat", "rectalogic", ensure_exists=ensure_exists) / "checkpoint.db"
 
 
 class ToolLoggingHandler(BaseCallbackHandler):

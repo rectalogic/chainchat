@@ -11,6 +11,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 
 from . import chat
 from .attachment import ATTACHMENT, Attachment, AttachmentType, attachment_type_callback
+from .conversation import list_conversations, show_conversation
 from .model import LazyModelGroup
 from .pipe import chainpipe
 from .render import render_markdown, render_text
@@ -176,3 +177,19 @@ def pipe_results(
         system_message and system_message[1],
         max_history_tokens,
     )
+
+
+@cli.group(help="Manage conversation history.")
+def conversations() -> None:
+    pass
+
+
+@conversations.command("list", help="List conversations.")
+def list_() -> None:
+    list_conversations()
+
+
+@conversations.command(help="Show the specified conversation.")
+@click.argument("conversation_id")
+def show(conversation_id: str) -> None:
+    show_conversation(conversation_id)
