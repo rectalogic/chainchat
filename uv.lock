@@ -155,7 +155,7 @@ wheels = [
 
 [[package]]
 name = "chainchat"
-version = "0.1a1"
+version = "0.1a2"
 source = { editable = "." }
 dependencies = [
     { name = "click" },

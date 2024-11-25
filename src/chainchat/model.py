@@ -13,7 +13,7 @@ from pydanclick.model import convert_to_click
 
 from .cache import distributions_cached, format_distributions_key, models_execute
 from .finder import find_package_classes, find_packages_distributions
-from .loader import SafeClassNameLoader, lazy_load_yaml, load_yaml, pydantic_class
+from .loader import LazyLoader, pydantic_class
 
 # https://stackoverflow.com/a/1176023/1480205
 OPTION_NAME_RE = re.compile(
@@ -36,16 +36,13 @@ class LazyModelGroup(click.Group):
         return discover_models()
 
     @cache  # noqa: B019
-    def preset_commands(self, model_presets: str | None) -> dict[str, tuple[str, str]]:
-        return {
-            f"{PRESET_PREFIX}{k}": v
-            for k, v in load_yaml(model_presets, SafeClassNameLoader).items()
-            if isinstance(v, tuple)
-        }
+    def presets(self, model_presets: str | None) -> LazyLoader:
+        return LazyLoader(model_presets)
 
     def list_commands(self, ctx: click.Context) -> list[str]:
         return super().list_commands(ctx) + sorted(
-            self.discovered_commands.keys() | self.preset_commands(ctx.obj.get("model_presets")).keys()
+            self.discovered_commands.keys()
+            | self.presets(ctx.obj.get("model_presets")).prefixed_keys("models", PRESET_PREFIX)
         )
 
     def get_command(self, ctx: click.Context, cmd_name: str) -> click.Command | None:
@@ -53,10 +50,10 @@ class LazyModelGroup(click.Group):
         if cmd_name in commands:
             module, classname = commands[cmd_name]
             return self.build_discovered_model_command(cmd_name, module, classname)
-        commands = self.preset_commands(ctx.obj.get("model_presets"))
+        presets = self.presets(ctx.obj.get("model_presets"))
+        commands = presets.prefixed_keys("models", PRESET_PREFIX)
         if cmd_name in commands:
-            module, classname = commands[cmd_name]
-            return self.build_preset_model_command(ctx.obj.get("model_presets"), cmd_name, module, classname)
+            return self.build_preset_model_command(presets, cmd_name)
         return super().get_command(ctx, cmd_name)
 
     def build_discovered_model_command(self, cmd_name: str, module: str, classname: str) -> click.Command:
@@ -94,19 +91,15 @@ class LazyModelGroup(click.Group):
 
         return command
 
-    def build_preset_model_command(
-        self, model_presets: str | None, cmd_name: str, module: str, classname: str
-    ) -> click.Command:
-        model_info = None
-        if model_presets:
-            model_info = lazy_load_yaml(model_presets, cmd_name.removeprefix(PRESET_PREFIX))
+    def build_preset_model_command(self, presets: LazyLoader, cmd_name: str) -> click.Command:
+        model_info = presets.load_pydantic("models", cmd_name.removeprefix(PRESET_PREFIX))
         if (
             not model_info
             or not isinstance(model_info, dict)
             or not issubclass(model_info.get("class", type), BaseChatModel)
         ):
             raise click.UsageError(f"Invalid preset {cmd_name}")
-        fullname = module + "." + classname
+        fullname = model_info["class"].__module__ + "." + model_info["class"].__name__
 
         options, validate = convert_to_click(
             model_info["class"],

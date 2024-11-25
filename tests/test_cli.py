@@ -138,10 +138,11 @@ def test_prompt_model_preset(tmp_path, mock_platformdirs, httpx_mock, mock_envir
             f.write(
                 textwrap.dedent(
                     """
-                    xai: !pydantic:langchain_openai.ChatOpenAI
-                      model_name: grok-beta
-                      openai_api_base: https://api.x.ai/v1
-                      openai_api_key: ${XAI_API_KEY}
+                    models:
+                      xai: !pydantic:langchain_openai.ChatOpenAI
+                        model_name: grok-beta
+                        openai_api_base: https://api.x.ai/v1
+                        openai_api_key: ${XAI_API_KEY}
                     """
                 )
             )

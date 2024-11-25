@@ -3,6 +3,7 @@
 
 import os
 import re
+from functools import cache
 from importlib import import_module
 from typing import Any, TypeGuard
 
@@ -26,10 +27,6 @@ class EnvVar(yaml.YAMLObject):
         return node.value
 
     yaml_loader.add_implicit_resolver(yaml_tag, ENV_VAR_RE, "${")
-
-
-class SafeClassNameLoader(yaml.SafeLoader):
-    pass
 
 
 def parse_classname(classname: str) -> tuple[str, str] | None:
@@ -74,17 +71,6 @@ class PydanticModel(yaml.YAMLObject):
     yaml_loader.add_multi_constructor(yaml_tag, from_yaml_multi)
 
 
-class PydanticModelClassName(yaml.YAMLObject):
-    yaml_tag = "!pydantic:"
-    yaml_loader = SafeClassNameLoader
-
-    @staticmethod
-    def from_yaml_multi(loader: yaml.Loader, suffix: str, node: yaml.Node) -> tuple[str, str] | None:
-        return parse_classname(suffix)
-
-    yaml_loader.add_multi_constructor(yaml_tag, from_yaml_multi)
-
-
 class HttpLogClient(yaml.YAMLObject):
     yaml_tag = "!httplog"
     yaml_loader = yaml.SafeLoader
@@ -94,36 +80,37 @@ class HttpLogClient(yaml.YAMLObject):
         return trace.HttpLogClient()
 
 
-class HttpLogClientNoop(yaml.YAMLObject):
-    yaml_tag = "!httplog"
-    yaml_loader = SafeClassNameLoader
+class LazyLoader:
+    def __init__(self, filename: str):
+        self.mapping: dict[str, dict[str, Any]] = {}
+        try:
+            with open(filename) as f:
+                self.loader = yaml.SafeLoader(f)
+                try:
+                    mapping_node = self.loader.get_single_node()
+                    if not isinstance(mapping_node, yaml.MappingNode):
+                        raise yaml.YAMLError(f"Expected mapping in {filename}")
+                    for key_node, value_node in mapping_node.value:
+                        key = self.loader.construct_object(key_node)
+                        self.mapping[key] = {}
+                        if not isinstance(value_node, yaml.MappingNode):
+                            raise yaml.YAMLError(f"Expected mapping for {key} in {filename}")
+                        for key_node_child, value_node_child in value_node.value:
+                            key_child = self.loader.construct_object(key_node_child)
+                            self.mapping[key][key_child] = value_node_child
+                finally:
+                    self.loader.dispose()
+        except OSError:
+            pass
 
-    @classmethod
-    def from_yaml(cls, loader: yaml.Loader, node: yaml.Node):
-        return None
+    @cache  # noqa: B019
+    def prefixed_keys(self, section: str, prefix: str) -> list[str]:
+        return [f"{prefix}{k}" for k in self.mapping.get(section, {}).keys()]
 
+    def load_pydantic(self, section: str, key: str):
+        node = self.mapping.get(section, {}).get(key)
+        if not node:
+            return None
 
-def load_yaml(filename: str, loader: yaml.Loader = yaml.SafeLoader) -> Any:
-    try:
-        with open(filename) as f:
-            return yaml.load(f, loader)  # noqa: S506
-    except OSError:
-        return {}
-
-
-def lazy_load_yaml(filename: str, key: str) -> Any:
-    try:
-        with open(filename) as f:
-            loader = yaml.SafeLoader(f)
-            try:
-                mapping = loader.get_single_node()
-                if not isinstance(mapping, yaml.MappingNode):
-                    raise yaml.YAMLError(f"Expected mapping in {filename}")
-                for key_node, value_node in mapping.value:
-                    if key == loader.construct_object(key_node, deep=True):
-                        return loader.construct_object(value_node, deep=True)
-                raise yaml.YAMLError(f"No such key {key} in {filename}")
-            finally:
-                loader.dispose()
-    except OSError:
-        return {}
+        # XXX verify pydantic
+        return self.loader.construct_object(node)

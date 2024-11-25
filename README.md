@@ -1,4 +1,5 @@
 # ChainChat - Chat with LangChain
+![ChainChat logo](chainchat.svg)
 
 CLI to chat with any [LangChain](https://python.langchain.com/docs/introduction/) model,
 also supports [tool calling](https://python.langchain.com/docs/integrations/tools/)

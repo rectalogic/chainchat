@@ -1,6 +1,6 @@
 [project]
 name = "chainchat"
-version = "0.1.a1"
+version = "0.1.a2"
 description = "Chat with LangChain LLM models, with tool calling and multimodal support"
 readme = "README.md"
 authors = [
